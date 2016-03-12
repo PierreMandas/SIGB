@@ -1,0 +1,86 @@
+Ex101_A01:
+	- Thr: 105
+	
+Ex101_A02:
+	- Thr: 50
+	
+Ex101_B01:
+	- Thr: 115
+	- MinSize: 65 * 50
+	- MaxSize: 105 * 50
+	- MinExtend: 0.60
+	- MaxExtend: 0.75
+	
+Ex101_B02:
+	- Thr: 58
+	- MinSize: 15 * 50
+	- MaxSize: 40 * 50
+	- MinExtend: 0.55
+	- MaxExtend: 0.80
+	
+Ex101_C01:
+	- Thr: 127
+	- MinSize: 80 * 50
+	- MaxSize: 105 * 50
+	- MinExtend: 0.60
+	- MaxExtend: 0.85
+	
+Ex101_C02:
+	- Thr: 58
+	- MinSize: 15 * 50
+	- MaxSize: 25 * 50
+	- MinExtend: 0.60
+	- MaxExtend: 0.80
+	
+Ex103_A01:
+	- glintThr: 245
+	- MinSize: 700 * 0.1
+	- MaxSize: 1300 * 0.1
+	
+Ex103_A02:
+	- glintThr: 250
+	- MinSize: 0 * 0.1
+	- MaxSize: 480 * 0.1
+	
+Ex103_B01: Own recording needed
+Ex103_B02: Own recording needed
+
+Ex102_A01_Extra:
+	- Thr: 120
+	- MinSize: 70 * 50
+	- MaxSize: 110 * 50
+	- MinExtend: 0.60
+	- MaxExtend: 0.75
+	
+Ex102_A02_Extra:
+	- Thr: 57
+	- MinSize: 15 * 50
+	- MaxSize: 35 * 50
+	- MinExtend: 0.65
+	- MaxExtend: 0.75
+	
+Ex102_B01_Extra:
+	- Thr: 78
+	- MinSize: 40 * 50
+	- MaxSize: 70 * 50
+	- MinExtend: 0.60
+	- MaxExtend: 0.75
+	
+Ex102_B02_Extra:
+	- Thr: 83
+	- MinSize: 40 * 50
+	- MaxSize: 70 * 50
+	- MinExtend: 0.60
+	- MaxExtend: 0.80
+	
+Ex103_C01_Extra: Own recording needed
+Ex103_C02_Extra: Own recording needed
+
+Ex104_C01_Extra: Own recording needed
+Ex104_C02_Extra: Own recording needed
+
+Ex105_C01_Extra: Own recording needed
+Ex105_C02_Extra: Own recording needed
+
+Ex105_D01_Extra: Own recording needed
+Ex105_D02_Extra: Own recording needed
