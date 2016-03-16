@@ -192,7 +192,7 @@ class Assignment1(object):
 
             # Spacebar to stop or start the video.
             elif ch is 32:
-                cv2.setTrackbarPos("Stop/Start", "Threshold", not sliderVals["Running"])
+                cv2.setTrackbarPos("Stop/Start", "TrackBars", not sliderVals["Running"])
 
             # Restart the video.
             elif ch is ord("r"):
@@ -260,7 +260,7 @@ class Assignment1(object):
         kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(7,7)) # Elipse-shaped kernel
         threshold = cv2.morphologyEx(threshold, cv2.MORPH_CLOSE, kernel, iterations=1) # Morphology by doing a closing
         
-        cv2.imshow("Threshold", threshold)
+        cv2.imshow("Pupil threshold", threshold)
 
         # Get the blob properties.
         props = SIGBTools.RegionProps()
@@ -335,7 +335,7 @@ class Assignment1(object):
         binLabelIm = cv2.resize(binLabelIm, (w,h))
         
         # Show the binary label image
-        cv2.imshow("Threshold", binLabelIm)
+        cv2.imshow("Pupil Threshold", binLabelIm)
         
         # Blob detection
         _, contours, hierachy = cv2.findContours(binLabelIm, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
@@ -472,11 +472,31 @@ class Assignment1(object):
             corners.append(maxLoc_right_to)
         return corners
 
-    def __GetIrisUsingThreshold(self, grayscale, pupil):
+    def __GetIrisUsingThreshold(self, grayscale, threshold, minSize, maxSize):
         """Given a gray level image and the pupil candidates returns a list of iris locations."""
         iris = []
 
-        # YOUR IMPLEMENTATION HERE !!!!
+         # Create a binary image.
+        val, threshold = cv2.threshold(grayscale, threshold, 255, cv2.THRESH_BINARY_INV)
+        
+        cv2.imshow("Iris threshold", threshold)
+        
+        # Get the blob properties.
+        props = SIGBTools.RegionProps()
+        
+        # Calculate blobs.
+        _, contours, hierarchy = cv2.findContours(threshold, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+        
+        # Iterate through blob and calculate properties of each blob.
+        for cnt in contours:
+            p = props.CalcContourProperties(cnt, ["centroid", "area", "extend"])
+            x,y = p["Centroid"]
+            area = p["Area"]
+            extend = p["Extend"]
+            
+            if area > minSize and area < maxSize and extend > 0.5 and extend < 1.0:
+                irisEllipse = cv2.fitEllipse(cnt)
+                iris.append(irisEllipse)
 
         return iris
 
@@ -495,6 +515,79 @@ class Assignment1(object):
         # YOUR IMPLEMENTATION HERE !!!!
 
         return iris
+    
+    def __getGradientImageInfo(self, I):
+        sobelX = cv2.Sobel(I, cv2.CV_64F, 1, 0)
+        sobelY = cv2.Sobel(I, cv2.CV_64F, 0, 1)
+        
+        orientation = np.zeros(I.shape)
+        magnitude = np.zeros(I.shape)
+        
+        for x in range(I.shape[0]):
+            for y in range(I.shape[1]):
+                orientation[x][y] = np.arctan2(sobelY[x][y], sobelX[x][y]) * (180 / m.pi)
+                magnitude[x][y] = m.sqrt(sobelY[x][y] ** 2 + sobelX[x][y] ** 2)
+        
+        return orientation, magnitude
+ 
+     
+    def __CircleTest(self, grayscale, centerPoints):
+        nPts = 20
+        circleRadius = 100
+        P = SIGBTools.GetCircleSamples(center=centerPoints, radius=circleRadius, numPoints=nPts)
+        for (x, y, dx, dy) in P:
+            pointCoord = (int(x),int(y))
+            cv2.circle(grayscale, pointCoord, 2, (0,0,255), 2)
+            cv2.line(grayscale, pointCoord, centerPoints, (0,0,255))
+
+            
+    def __FindEllipseContour(self, img, gradientMagnitude, gradientOrientation, estimatedCenter, estimatedRadius, nPts=30):
+        P = SIGBTools.GetCircleSamples(center=estimatedCenter, radius=estimatedRadius, numPoints=nPts)      
+        
+        newPupil = np.zeros((nPts, 1, 2)).astype(np.float32)
+        t = 0
+        for (x, y, dx, dy) in P:
+            # Draw normals
+            pointCoord = (int(x),int(y))
+            cv2.circle(img, pointCoord, 2, (0,0,255), 2)
+            cv2.line(img, pointCoord, estimatedCenter, (0,0,255))            
+            
+            # < Define normalLength as some maximum distance away from initial circle >
+            # < Get the endpoints of the normal -> p1 , p2 >
+            normal = dx*40, dy*40
+            maxPoint = self.__FindMaxGradientValueOnNormal(gradientMagnitude, gradientOrientation, pointCoord, estimatedCenter, normal)
+            cv2.circle(img, tuple(maxPoint), 2, (0,255,255), 2)
+            # < store maxPoint in newPupil >
+            newPupil[t] = maxPoint
+            t = t + 1
+            # < fitPoints to model using least squares - cv2.fitellipse(newPupil) >
+        return cv2.fitEllipse(newPupil)
+ 
+    
+    def __FindMaxGradientValueOnNormal(self, gradientMagnitude, gradientOrientation, p1, p2, normal):
+        # Get integer coordinates on the straight line between p1 and p2.
+        pts = SIGBTools.GetLineCoordinates(p1, p2)
+        normalVals = gradientMagnitude[pts[:,1], pts[:,0]]
+        
+        # Orientation calculation
+        normalOrients = gradientOrientation[pts[:,1], pts[:,0]]
+        normalAngle = np.arctan2(normal[1], normal[0]) * (180 / m.pi)
+        
+        maxIndex = 0
+        maxGradient = 0.0
+        
+        for i in range(len(normalOrients)):
+            if normalVals[i] > maxGradient:
+                if abs(normalOrients[i] - normalAngle) < 20:
+                    maxIndex = i
+                    maxGradient = normalVals[i]
+        
+        # Find index of max value in normalVals
+        #maxIndex = np.argmax(normalVals)
+        
+        # return coordinate of max value in image coordinates
+        return pts[maxIndex]
+    
 
     #----------------------------------------------------------------------#
     #                        Image Display Methods                         #
@@ -513,14 +606,17 @@ class Assignment1(object):
         # Perform the eye features detector.
         grayscale = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
         
+        # Normal threshold methods for pupil, glints and iris
         pupils = self.__GetPupil(grayscale,  sliderVals["pupilThr"], sliderVals["pupilMinSize"], sliderVals["pupilMaxSize"], sliderVals["pupilMinExtend"], sliderVals["pupilMaxExtend"])
         glints = self.__GetGlints(grayscale, sliderVals["glintThr"], sliderVals["glintMinSize"], sliderVals["glintMaxSize"])
         pupils, glints = self.__FilterPupilGlint(pupils, glints)
+        irises = self.__GetIrisUsingThreshold(grayscale, sliderVals["irisThr"], sliderVals["irisMinSize"], sliderVals["irisMaxSize"])
         
+        # Kmeans methods for finding threshold and pupils by kmeans.
         #labelIm, centroids = self.__DetectPupilKMeans(grayscale, K=8, distanceWeight=40, reSize=(40,40))
         #threshold = self.__ThresholdFromKMeans(centroids)
         #pupils = self.__PupilFromKMeans(labelIm, centroids, grayscale, sliderVals["pupilMinSize"], sliderVals["pupilMaxSize"], sliderVals["pupilMinExtend"], sliderVals["pupilMaxExtend"])        
-
+        
         # Do template matching.
         leftTemplate  = self.LeftTemplate
         rightTemplate = self.RightTemplate
@@ -544,15 +640,24 @@ class Assignment1(object):
         #self.__SetText(image, (x, y + 7 * step), "glintMinSize :" + str(sliderVals["glintMinSize"]))
         #self.__SetText(image, (x, y + 8 * step), "glintMaxSize :" + str(sliderVals["glintMaxSize"]))
 
+
+        orientation, magnitude = self.__getGradientImageInfo(grayscale)
+
         ## Uncomment these lines as your methods start to work to display the result.
         for pupil in pupils:
-            cv2.ellipse(image, pupil, (0, 255, 0), 1)
+        #    cv2.ellipse(image, pupil, (0, 255, 0), 1)
             center = int(pupil[0][0]), int(pupil[0][1])
+        #    cv2.circle(image, center, 2, (0,0,255), 4)
+            contour = self.__FindEllipseContour(image, magnitude, orientation, center, 70)
+            cv2.ellipse(image, contour, (0,0,255), 1)
             cv2.circle(image, center, 2, (0,0,255), 4)
-
-        for glint in glints:
-            center = int(glint[0]), int(glint[1])
-            cv2.circle(image, center, 2, (255, 0, 255), 5)
+        
+        #for glint in glints:
+        #    center = int(glint[0]), int(glint[1])
+        #    cv2.circle(image, center, 2, (255, 0, 255), 5)
+            
+        for iris in irises:
+            cv2.ellipse(image, iris, (0, 255, 0), 1)        
            
         if corners != []:
             left_from, left_to, right_from, right_to = corners
@@ -576,36 +681,46 @@ class Assignment1(object):
         cv2.namedWindow("Original")
         cv2.namedWindow("Threshold")
         cv2.namedWindow("Results")
+        cv2.namedWindow("TrackBars", cv2.WINDOW_NORMAL)
+        cv2.resizeWindow("TrackBars", 500, 600)
 
         # Threshold value for the pupil intensity.
-        cv2.createTrackbar("pupilThr", "Threshold",  90, 255, self.__OnSlidersChange)     
+        cv2.createTrackbar("pupilThr", "TrackBars",  90, 255, self.__OnSlidersChange)     
         # Threshold value for the glint intensities.
-        cv2.createTrackbar("glintThr", "Threshold", 240, 255, self.__OnSlidersChange)
+        cv2.createTrackbar("glintThr", "TrackBars", 240, 255, self.__OnSlidersChange)
+        # Threshold value for the iris intensity.
+        cv2.createTrackbar("irisThr", "TrackBars", 240, 255, self.__OnSlidersChange)        
         # Define the minimum and maximum areas of the pupil.
-        cv2.createTrackbar("pupilMinSize", "Threshold",  20, 200, self.__OnSlidersChange)
-        cv2.createTrackbar("pupilMaxSize", "Threshold", 200, 200, self.__OnSlidersChange)
+        cv2.createTrackbar("pupilMinSize", "TrackBars",  20, 200, self.__OnSlidersChange)
+        cv2.createTrackbar("pupilMaxSize", "TrackBars", 200, 200, self.__OnSlidersChange)
         # Define the minimum and maximum extends of the pupil.
-        cv2.createTrackbar("pupilMinExtend", "Threshold",  1, 100, self.__OnSlidersChange)
-        cv2.createTrackbar("pupilMaxExtend", "Threshold", 100, 100, self.__OnSlidersChange)
+        cv2.createTrackbar("pupilMinExtend", "TrackBars",  1, 100, self.__OnSlidersChange)
+        cv2.createTrackbar("pupilMaxExtend", "TrackBars", 100, 100, self.__OnSlidersChange)
         # Define the minimum and maximum areas of the pupil glints.
-        cv2.createTrackbar("glintMinSize", "Threshold",  1, 2000, self.__OnSlidersChange)
-        cv2.createTrackbar("glintMaxSize", "Threshold", 2000, 2000, self.__OnSlidersChange)        
+        cv2.createTrackbar("glintMinSize", "TrackBars",  1, 2000, self.__OnSlidersChange)
+        cv2.createTrackbar("glintMaxSize", "TrackBars", 2000, 2000, self.__OnSlidersChange)
+        # Define the minimum and maximum areas of the pupil iris.
+        cv2.createTrackbar("irisMinSize", "TrackBars",  1, 2000, self.__OnSlidersChange)
+        cv2.createTrackbar("irisMaxSize", "TrackBars", 2000, 2000, self.__OnSlidersChange)            
         # Value to indicate whether to run or pause the video.
-        cv2.createTrackbar("Stop/Start", "Threshold", 0, 1, self.__OnSlidersChange)
+        cv2.createTrackbar("Stop/Start", "TrackBars", 0, 1, self.__OnSlidersChange)
 
     def __GetSliderValues(self):
         """Extract the values of the sliders and return these in a dictionary."""
         sliderVals = {}
 
-        sliderVals["pupilThr"] = cv2.getTrackbarPos("pupilThr", "Threshold")
-        sliderVals["glintThr"] = cv2.getTrackbarPos("glintThr", "Threshold")
-        sliderVals["pupilMinSize"] = 50 * cv2.getTrackbarPos("pupilMinSize",    "Threshold")
-        sliderVals["pupilMaxSize"] = 50 * cv2.getTrackbarPos("pupilMaxSize",    "Threshold")
-        sliderVals["pupilMinExtend"] = 0.01 * cv2.getTrackbarPos("pupilMinExtend", "Threshold")
-        sliderVals["pupilMaxExtend"] = 0.01 * cv2.getTrackbarPos("pupilMaxExtend", "Threshold")
-        sliderVals["glintMinSize"] = 0.1 * cv2.getTrackbarPos("glintMinSize",    "Threshold")
-        sliderVals["glintMaxSize"] = 0.1 * cv2.getTrackbarPos("glintMaxSize",    "Threshold")        
-        sliderVals["Running"] = 1 == cv2.getTrackbarPos("Stop/Start", "Threshold")
+        sliderVals["pupilThr"] = cv2.getTrackbarPos("pupilThr", "TrackBars")
+        sliderVals["glintThr"] = cv2.getTrackbarPos("glintThr", "TrackBars")
+        sliderVals["irisThr"] = cv2.getTrackbarPos("irisThr", "TrackBars")
+        sliderVals["pupilMinSize"] = 50 * cv2.getTrackbarPos("pupilMinSize",    "TrackBars")
+        sliderVals["pupilMaxSize"] = 50 * cv2.getTrackbarPos("pupilMaxSize",    "TrackBars")
+        sliderVals["pupilMinExtend"] = 0.01 * cv2.getTrackbarPos("pupilMinExtend", "TrackBars")
+        sliderVals["pupilMaxExtend"] = 0.01 * cv2.getTrackbarPos("pupilMaxExtend", "TrackBars")
+        sliderVals["glintMinSize"] = 0.1 * cv2.getTrackbarPos("glintMinSize",    "TrackBars")
+        sliderVals["glintMaxSize"] = 0.1 * cv2.getTrackbarPos("glintMaxSize",    "TrackBars")
+        sliderVals["irisMinSize"] = 50 * cv2.getTrackbarPos("irisMinSize",    "TrackBars")
+        sliderVals["irisMaxSize"] = 50 * cv2.getTrackbarPos("irisMaxSize",    "TrackBars")        
+        sliderVals["Running"] = 1 == cv2.getTrackbarPos("Stop/Start", "TrackBars")
 
         return sliderVals
 
