@@ -250,8 +250,6 @@ class Assignment1(object):
     #----------------------------------------------------------------------#
     def __GetPupil(self, grayscale, threshold, minSize, maxSize, minExtend, maxExtend):
         """Given a grayscale level image and a threshold value returns a list of pupil candidates."""
-        # Draw a red circle on coordinate 100x200.
-        # cv2.circle(self.ResultImage, (100, 200), 2, (0, 0, 255), 4)
 
         # Create a binary image.
         val, threshold = cv2.threshold(grayscale, threshold, 255, cv2.THRESH_BINARY_INV)
@@ -260,6 +258,7 @@ class Assignment1(object):
         kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(7,7)) # Elipse-shaped kernel
         threshold = cv2.morphologyEx(threshold, cv2.MORPH_CLOSE, kernel, iterations=1) # Morphology by doing a closing
         
+        # Show thresholded image
         cv2.imshow("Pupil threshold", threshold)
 
         # Get the blob properties.
@@ -290,13 +289,14 @@ class Assignment1(object):
            distanceWeight    : Defines the weight of the position parameters
            reSize            : the size of the image to do k-means on
         """
-        # Resize for faster performance.
+        # Resize for faster performance and use gaussianBlur to remove noise.
         smallI = cv2.resize(grayscale, reSize)
-        smallI = cv2.GaussianBlur(grayscale, (3,3), 20) # Exercise 1.06e Answer: yes, noise is removed and therefore pixels are better placed in their respective clusters.
+        smallI = cv2.GaussianBlur(smallI, (3,3), 20)
         M, N = smallI.shape
 
         # Generate coordinates in a matrix.
         X, Y = np.meshgrid(range(M), range(N))
+        
         # Make coordinates and intensity into one vectors.
         z = smallI.flatten()
         x = X.flatten()
@@ -326,9 +326,14 @@ class Assignment1(object):
         return labelIm, centroids
     
     def __PupilFromKMeans(self, labelIm, centroids, grayscale, minSize, maxSize, minExtend, maxExtend):
-        binLabelIm = np.zeros(labelIm.shape, dtype='uint8') # Binary image created from labelIm
-        label = np.argmin(centroids[:,0]) # Label from cluster with lowest intensity
-        binLabelIm[labelIm == label] = 255 # Change every pixel intensity of cluster pixels to 255
+        # Binary image created from labelIm
+        binLabelIm = np.zeros(labelIm.shape, dtype='uint8')
+        
+         # Label index from cluster with lowest intensity
+        label = np.argmin(centroids[:,0])
+        
+        # Change every pixel intensity of cluster pixels to 255
+        binLabelIm[labelIm == label] = 255
         
         # Resize image to original size
         h, w = grayscale.shape
@@ -337,7 +342,7 @@ class Assignment1(object):
         # Show the binary label image
         cv2.imshow("Pupil Threshold", binLabelIm)
         
-        # Blob detection
+        # Calculate blobs
         _, contours, hierachy = cv2.findContours(binLabelIm, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
         
         pupils = []
@@ -409,7 +414,7 @@ class Assignment1(object):
         kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(5,5))
         threshold = cv2.morphologyEx(threshold, cv2.MORPH_CLOSE, kernel, iterations=2)
         
-        cv2.imshow("Glint threshold", threshold)
+        #cv2.imshow("Glint threshold", threshold)
         
         # Get the blob properties.
         props = SIGBTools.RegionProps()
@@ -425,7 +430,6 @@ class Assignment1(object):
             
             if area > minSize and area < maxSize:
                 glints.append((x,y))
-                # cv2.circle(self.ResultImage, (int(x),int(y)), 2, (0,0,255), 4)
                 
         return glints
 
@@ -437,9 +441,14 @@ class Assignment1(object):
         for pupil in pupils:
             for glint in glints:
                 center, radius, angle = pupil
-                max_radius = max(radius) # Max radius of our pupil ellipse
-                distance = self.__EuclideanDistance(center, glint) # Distance between center of pupil and glint
-                if distance < max_radius: # If distance is lower (meaning its within) radius of the pupil, this glint belongs to the pupil
+                # Max radius of our pupil ellipse
+                max_radius = max(radius)
+                
+                # Distance between center of pupil and glint
+                distance = self.__EuclideanDistance(center, glint)
+                
+                # If distance is lower (meaning its within) radius of the pupil, this glint belongs to the pupil
+                if distance < max_radius: 
                     filteredGlints.append(glint)
 
         return filteredPupils, filteredGlints
@@ -476,10 +485,10 @@ class Assignment1(object):
         """Given a gray level image and the pupil candidates returns a list of iris locations."""
         iris = []
 
-         # Create a binary image.
+        # Create a binary image.
         val, threshold = cv2.threshold(grayscale, threshold, 255, cv2.THRESH_BINARY_INV)
         
-        cv2.imshow("Iris threshold", threshold)
+        #cv2.imshow("Iris threshold", threshold)
         
         # Get the blob properties.
         props = SIGBTools.RegionProps()
@@ -517,12 +526,15 @@ class Assignment1(object):
         return iris
     
     def __getGradientImageInfo(self, I):
+        # Use sobel on the x and y axis
         sobelX = cv2.Sobel(I, cv2.CV_64F, 1, 0)
         sobelY = cv2.Sobel(I, cv2.CV_64F, 0, 1)
         
+        # Arrays for holding information about orientation and magnitude og each gradient
         orientation = np.zeros(I.shape)
         magnitude = np.zeros(I.shape)
         
+        # Calculate orientation and magnitude of each gradient
         for x in range(I.shape[0]):
             for y in range(I.shape[1]):
                 orientation[x][y] = np.arctan2(sobelY[x][y], sobelX[x][y]) * (180 / m.pi)
@@ -542,8 +554,7 @@ class Assignment1(object):
 
             
     def __FindEllipseContour(self, img, gradientMagnitude, gradientOrientation, estimatedCenter, estimatedRadius, nPts=30):
-        P = SIGBTools.GetCircleSamples(center=estimatedCenter, radius=estimatedRadius, numPoints=nPts)      
-        
+        P = SIGBTools.GetCircleSamples(center=estimatedCenter, radius=estimatedRadius, numPoints=nPts)
         newPupil = np.zeros((nPts, 1, 2)).astype(np.float32)
         t = 0
         for (x, y, dx, dy) in P:
@@ -567,12 +578,15 @@ class Assignment1(object):
     def __FindMaxGradientValueOnNormal(self, gradientMagnitude, gradientOrientation, p1, p2, normal):
         # Get integer coordinates on the straight line between p1 and p2.
         pts = SIGBTools.GetLineCoordinates(p1, p2)
-        normalVals = gradientMagnitude[pts[:,1], pts[:,0]]
         
-        # Orientation calculation
+        # Get magnitude and orientation values from gradients on the normal
+        normalVals = gradientMagnitude[pts[:,1], pts[:,0]]
         normalOrients = gradientOrientation[pts[:,1], pts[:,0]]
+        
+        # Calculate angle between normal and x axis
         normalAngle = np.arctan2(normal[1], normal[0]) * (180 / m.pi)
         
+        # Find the index of gradient containing best suitable magnitude and orientation
         maxIndex = 0
         maxGradient = 0.0
         
@@ -607,15 +621,15 @@ class Assignment1(object):
         grayscale = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
         
         # Normal threshold methods for pupil, glints and iris
-        pupils = self.__GetPupil(grayscale,  sliderVals["pupilThr"], sliderVals["pupilMinSize"], sliderVals["pupilMaxSize"], sliderVals["pupilMinExtend"], sliderVals["pupilMaxExtend"])
-        glints = self.__GetGlints(grayscale, sliderVals["glintThr"], sliderVals["glintMinSize"], sliderVals["glintMaxSize"])
-        pupils, glints = self.__FilterPupilGlint(pupils, glints)
-        irises = self.__GetIrisUsingThreshold(grayscale, sliderVals["irisThr"], sliderVals["irisMinSize"], sliderVals["irisMaxSize"])
+        #pupils = self.__GetPupil(grayscale,  sliderVals["pupilThr"], sliderVals["pupilMinSize"], sliderVals["pupilMaxSize"], sliderVals["pupilMinExtend"], sliderVals["pupilMaxExtend"])
+        #glints = self.__GetGlints(grayscale, sliderVals["glintThr"], sliderVals["glintMinSize"], sliderVals["glintMaxSize"])
+        #pupils, glints = self.__FilterPupilGlint(pupils, glints)
+        #irises = self.__GetIrisUsingThreshold(grayscale, sliderVals["irisThr"], sliderVals["irisMinSize"], sliderVals["irisMaxSize"])
         
         # Kmeans methods for finding threshold and pupils by kmeans.
-        #labelIm, centroids = self.__DetectPupilKMeans(grayscale, K=8, distanceWeight=40, reSize=(40,40))
+        labelIm, centroids = self.__DetectPupilKMeans(grayscale, K=12, distanceWeight=40, reSize=(100,100))
+        pupils = self.__PupilFromKMeans(labelIm, centroids, grayscale, sliderVals["pupilMinSize"], sliderVals["pupilMaxSize"], sliderVals["pupilMinExtend"], sliderVals["pupilMaxExtend"])
         #threshold = self.__ThresholdFromKMeans(centroids)
-        #pupils = self.__PupilFromKMeans(labelIm, centroids, grayscale, sliderVals["pupilMinSize"], sliderVals["pupilMaxSize"], sliderVals["pupilMinExtend"], sliderVals["pupilMaxExtend"])        
         
         # Do template matching.
         leftTemplate  = self.LeftTemplate
@@ -640,24 +654,28 @@ class Assignment1(object):
         #self.__SetText(image, (x, y + 7 * step), "glintMinSize :" + str(sliderVals["glintMinSize"]))
         #self.__SetText(image, (x, y + 8 * step), "glintMaxSize :" + str(sliderVals["glintMaxSize"]))
 
-
-        orientation, magnitude = self.__getGradientImageInfo(grayscale)
+        # Get gradient magnitudes and orientations from image
+        #orientation, magnitude = self.__getGradientImageInfo(grayscale)
 
         ## Uncomment these lines as your methods start to work to display the result.
         for pupil in pupils:
-        #    cv2.ellipse(image, pupil, (0, 255, 0), 1)
+            # For pupil by thresholding and kmeans
+            cv2.ellipse(image, pupil, (0, 255, 0), 1)
             center = int(pupil[0][0]), int(pupil[0][1])
-        #    cv2.circle(image, center, 2, (0,0,255), 4)
-            contour = self.__FindEllipseContour(image, magnitude, orientation, center, 70)
-            cv2.ellipse(image, contour, (0,0,255), 1)
             cv2.circle(image, center, 2, (0,0,255), 4)
+            
+            # For pupil by using normals
+        #    contour = self.__FindEllipseContour(image, magnitude, orientation, center, 70)
+        #    cv2.ellipse(image, contour, (0,0,255), 1)
+        #    cv2.circle(image, center, 2, (0,0,255), 4)
+        
         
         #for glint in glints:
         #    center = int(glint[0]), int(glint[1])
         #    cv2.circle(image, center, 2, (255, 0, 255), 5)
             
-        for iris in irises:
-            cv2.ellipse(image, iris, (0, 255, 0), 1)        
+        #for iris in irises:
+        #    cv2.ellipse(image, iris, (0, 255, 0), 1)        
            
         if corners != []:
             left_from, left_to, right_from, right_to = corners
@@ -689,7 +707,7 @@ class Assignment1(object):
         # Threshold value for the glint intensities.
         cv2.createTrackbar("glintThr", "TrackBars", 240, 255, self.__OnSlidersChange)
         # Threshold value for the iris intensity.
-        cv2.createTrackbar("irisThr", "TrackBars", 240, 255, self.__OnSlidersChange)        
+        cv2.createTrackbar("irisThr", "TrackBars", 145, 255, self.__OnSlidersChange)        
         # Define the minimum and maximum areas of the pupil.
         cv2.createTrackbar("pupilMinSize", "TrackBars",  20, 200, self.__OnSlidersChange)
         cv2.createTrackbar("pupilMaxSize", "TrackBars", 200, 200, self.__OnSlidersChange)
