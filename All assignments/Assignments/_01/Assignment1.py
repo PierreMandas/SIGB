@@ -257,7 +257,7 @@ class Assignment1(object):
         # Morphology by using an ellipse kernel with a closing of 1 iteration.
         kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(7,7)) # Elipse-shaped kernel
         threshold = cv2.morphologyEx(threshold, cv2.MORPH_CLOSE, kernel, iterations=1) # Morphology by doing a closing
-        
+        threshold = cv2.morphologyEx(threshold, cv2.MORPH_OPEN, kernel, iterations=1)
         # Show thresholded image
         cv2.imshow("Pupil threshold", threshold)
 
@@ -413,8 +413,9 @@ class Assignment1(object):
         # Create kernel and use closing with 2 iterations, with the kernel applied
         kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(5,5))
         threshold = cv2.morphologyEx(threshold, cv2.MORPH_CLOSE, kernel, iterations=2)
+        threshold = cv2.morphologyEx(threshold, cv2.MORPH_OPEN, kernel, iterations=2)
         
-        #cv2.imshow("Glint threshold", threshold)
+        cv2.imshow("Glint threshold", threshold)
         
         # Get the blob properties.
         props = SIGBTools.RegionProps()
@@ -437,21 +438,58 @@ class Assignment1(object):
         """Given a list of pupil candidates and glint candidates returns a list of pupil and glints."""
         filteredPupils = pupils
         filteredGlints = []
+        matchedPupils = []
+        matchedGlints = []       
+        
+        sliderVals = self.__GetSliderValues()
+        
+        for currentGlt in range(len(glints) - 1):
+            for nextGlt in range(currentGlt + 1, len(glints)):
+        
+                glint1 = glints[currentGlt][0], glints[currentGlt][1]
+                glint2 = glints[nextGlt][0], glints[nextGlt][1]
+        
+                distance = self.__EuclideanDistance(glint1, glint2)
+        
+                # We can use this find out what values to filter between
+                #print distance
+        
+                # Our glints seem to have a distance of 49.xxxx
+                # Lets set the filter between this value
+                if sliderVals['glintMinDist'] < distance < sliderVals['glintMaxDist']:
+                    # further filtering based on vertical position
+                    vDist = abs(glint1[1] - glint2[1])
+                    if vDist < 8:
+                        filteredGlints.append(glints[currentGlt])
+                        filteredGlints.append(glints[nextGlt])   
 
+        # I've commented this section out as the glints are only accepted if they are
+        # within the radius of the pupil. A valid glint might actually be outside the pupil though!
+        
+        #for pupil in pupils:
+            #for glint in glints:
+                #center, radius, angle = pupil
+                ## Max radius of our pupil ellipse
+                #max_radius = max(radius)
+                
+                ## Distance between center of pupil and glint
+                #distance = self.__EuclideanDistance(center, glint)
+                
+                ## If distance is lower (meaning its within) radius of the pupil, this glint belongs to the pupil
+                #if distance < max_radius: 
+                    #filteredGlints.append(glint)
+        
+        # New pupil glint filter
         for pupil in pupils:
-            for glint in glints:
-                center, radius, angle = pupil
-                # Max radius of our pupil ellipse
-                max_radius = max(radius)
-                
-                # Distance between center of pupil and glint
-                distance = self.__EuclideanDistance(center, glint)
-                
-                # If distance is lower (meaning its within) radius of the pupil, this glint belongs to the pupil
-                if distance < max_radius: 
-                    filteredGlints.append(glint)
+            pupilCentre = int(pupil[0][0]), int(pupil[0][1])
+            for glint in filteredGlints:
+                distance = self.__EuclideanDistance(pupilCentre, glint)
+                if distance < 90:
+                    matchedGlints.append(glint)
+                    if pupil not in matchedPupils:
+                        matchedPupils.append(pupil)        
 
-        return filteredPupils, filteredGlints
+        return matchedPupils, matchedGlints
     
     def __EuclideanDistance(self, pupil, glint):
         px, py = pupil
@@ -621,20 +659,20 @@ class Assignment1(object):
         grayscale = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
         
         # Normal threshold methods for pupil, glints and iris
-        #pupils = self.__GetPupil(grayscale,  sliderVals["pupilThr"], sliderVals["pupilMinSize"], sliderVals["pupilMaxSize"], sliderVals["pupilMinExtend"], sliderVals["pupilMaxExtend"])
-        #glints = self.__GetGlints(grayscale, sliderVals["glintThr"], sliderVals["glintMinSize"], sliderVals["glintMaxSize"])
-        #pupils, glints = self.__FilterPupilGlint(pupils, glints)
+        pupils = self.__GetPupil(grayscale,  sliderVals["pupilThr"], sliderVals["pupilMinSize"], sliderVals["pupilMaxSize"], sliderVals["pupilMinExtend"], sliderVals["pupilMaxExtend"])
+        glints = self.__GetGlints(grayscale, sliderVals["glintThr"], sliderVals["glintMinSize"], sliderVals["glintMaxSize"])
+        pupils, glints = self.__FilterPupilGlint(pupils, glints)
         #irises = self.__GetIrisUsingThreshold(grayscale, sliderVals["irisThr"], sliderVals["irisMinSize"], sliderVals["irisMaxSize"])
         
         # Kmeans methods for finding threshold and pupils by kmeans.
-        labelIm, centroids = self.__DetectPupilKMeans(grayscale, K=12, distanceWeight=40, reSize=(100,100))
-        pupils = self.__PupilFromKMeans(labelIm, centroids, grayscale, sliderVals["pupilMinSize"], sliderVals["pupilMaxSize"], sliderVals["pupilMinExtend"], sliderVals["pupilMaxExtend"])
+        #labelIm, centroids = self.__DetectPupilKMeans(grayscale, K=12, distanceWeight=40, reSize=(100,100))
+        #pupils = self.__PupilFromKMeans(labelIm, centroids, grayscale, sliderVals["pupilMinSize"], sliderVals["pupilMaxSize"], sliderVals["pupilMinExtend"], sliderVals["pupilMaxExtend"])
         #threshold = self.__ThresholdFromKMeans(centroids)
         
         # Do template matching.
-        leftTemplate  = self.LeftTemplate
-        rightTemplate = self.RightTemplate
-        corners = self.__GetEyeCorners(image, leftTemplate, rightTemplate)
+        #leftTemplate  = self.LeftTemplate
+        #rightTemplate = self.RightTemplate
+        #corners = self.__GetEyeCorners(image, leftTemplate, rightTemplate)
 
         ## For Iris Detection - Assignment #02 (Part 02)
         #iris = self.__CircularHough(grayscale)
@@ -670,17 +708,17 @@ class Assignment1(object):
         #    cv2.circle(image, center, 2, (0,0,255), 4)
         
         
-        #for glint in glints:
-        #    center = int(glint[0]), int(glint[1])
-        #    cv2.circle(image, center, 2, (255, 0, 255), 5)
+        for glint in glints:
+            center = int(glint[0]), int(glint[1])
+            cv2.circle(image, center, 2, (255, 0, 255), 5)
             
         #for iris in irises:
         #    cv2.ellipse(image, iris, (0, 255, 0), 1)        
            
-        if corners != []:
-            left_from, left_to, right_from, right_to = corners
-            cv2.rectangle(image, left_from , left_to, (0,255,0))
-            cv2.rectangle(image, right_from , right_to, (0,255,0))
+        #if corners != []:
+            #left_from, left_to, right_from, right_to = corners
+            #cv2.rectangle(image, left_from , left_to, (0,255,0))
+            #cv2.rectangle(image, right_from , right_to, (0,255,0))
 
         # Show the final processed image.
         cv2.imshow("Results", image)
@@ -717,6 +755,9 @@ class Assignment1(object):
         # Define the minimum and maximum areas of the pupil glints.
         cv2.createTrackbar("glintMinSize", "TrackBars",  1, 2000, self.__OnSlidersChange)
         cv2.createTrackbar("glintMaxSize", "TrackBars", 2000, 2000, self.__OnSlidersChange)
+        # Define the minimum and maximum allowed distance between two glints
+        cv2.createTrackbar('glintMinDist', 'TrackBars', 49, 100, self.__OnSlidersChange)
+        cv2.createTrackbar('glintMaxDist', 'TrackBars', 51, 100, self.__OnSlidersChange)        
         # Define the minimum and maximum areas of the pupil iris.
         cv2.createTrackbar("irisMinSize", "TrackBars",  1, 2000, self.__OnSlidersChange)
         cv2.createTrackbar("irisMaxSize", "TrackBars", 2000, 2000, self.__OnSlidersChange)            
@@ -736,6 +777,8 @@ class Assignment1(object):
         sliderVals["pupilMaxExtend"] = 0.01 * cv2.getTrackbarPos("pupilMaxExtend", "TrackBars")
         sliderVals["glintMinSize"] = 0.1 * cv2.getTrackbarPos("glintMinSize",    "TrackBars")
         sliderVals["glintMaxSize"] = 0.1 * cv2.getTrackbarPos("glintMaxSize",    "TrackBars")
+        sliderVals['glintMinDist'] = cv2.getTrackbarPos('glintMinDist', 'TrackBars')
+        sliderVals['glintMaxDist'] = cv2.getTrackbarPos('glintMaxDist', 'TrackBars')        
         sliderVals["irisMinSize"] = 50 * cv2.getTrackbarPos("irisMinSize",    "TrackBars")
         sliderVals["irisMaxSize"] = 50 * cv2.getTrackbarPos("irisMaxSize",    "TrackBars")        
         sliderVals["Running"] = 1 == cv2.getTrackbarPos("Stop/Start", "TrackBars")
