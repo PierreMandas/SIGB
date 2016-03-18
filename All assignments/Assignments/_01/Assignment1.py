@@ -658,6 +658,9 @@ class Assignment1(object):
         # Perform the eye features detector.
         grayscale = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
         
+        # Equalize the histogram
+        grayscale = cv2.equalizeHist(grayscale)
+        
         # Normal threshold methods for pupil, glints and iris
         pupils = self.__GetPupil(grayscale,  sliderVals["pupilThr"], sliderVals["pupilMinSize"], sliderVals["pupilMaxSize"], sliderVals["pupilMinExtend"], sliderVals["pupilMaxExtend"])
         glints = self.__GetGlints(grayscale, sliderVals["glintThr"], sliderVals["glintMinSize"], sliderVals["glintMaxSize"])
