@@ -22,6 +22,7 @@ import SIGBTools
 
 import cv2
 import os
+import sys
 import numpy as np
 import scipy as sp
 import time
@@ -35,6 +36,7 @@ from pylab import plot
 from pylab import show
 from pylab import subplot
 from pylab import title
+from pylab import cm, quiver
 
 from scipy.cluster.vq import kmeans
 from scipy.cluster.vq import vq
@@ -100,6 +102,14 @@ class Assignment1(object):
     def FrameNumber(self, value):
         """Set the current frame number."""
         self.__FrameNumber = value
+        
+    @property
+    def Figure(self):
+        return self.__Figure
+    
+    @Figure.setter
+    def Figure(self, value):
+        self.__Figure = value
 
     #----------------------------------------------------------------------#
     #                    Assignment1 Class Constructor                     #
@@ -112,6 +122,7 @@ class Assignment1(object):
         self.LeftTemplate  = []
         self.RightTemplate = []
         self.FrameNumber   = 0
+        self.Figure        = False
 
     #----------------------------------------------------------------------#
     #                         Public Class Methods                         #
@@ -147,7 +158,7 @@ class Assignment1(object):
         saveFrames = False
 
         # Read each frame from input video.
-        while True:
+        while True:            
             # Extract the values of the sliders.
             sliderVals = self.__GetSliderValues()
 
@@ -319,10 +330,10 @@ class Assignment1(object):
         # Re-create image from.
         labelIm = np.array(np.reshape(label,(M,N)))
 			
-        #f = figure("K-Means")
-        #imshow(labelIm)
-        #f.canvas.draw()
-        #f.show()
+        f = figure("K-Means")
+        imshow(labelIm)
+        f.canvas.draw()
+        f.show()
         return labelIm, centroids
     
     def __PupilFromKMeans(self, labelIm, centroids, grayscale, minSize, maxSize, minExtend, maxExtend):
@@ -526,7 +537,7 @@ class Assignment1(object):
         # Create a binary image.
         val, threshold = cv2.threshold(grayscale, threshold, 255, cv2.THRESH_BINARY_INV)
         
-        #cv2.imshow("Iris threshold", threshold)
+        cv2.imshow("Iris threshold", threshold)
         
         # Get the blob properties.
         props = SIGBTools.RegionProps()
@@ -566,19 +577,40 @@ class Assignment1(object):
     def __getGradientImageInfo(self, I):
         # Use sobel on the x and y axis
         sobelX = cv2.Sobel(I, cv2.CV_64F, 1, 0)
-        sobelY = cv2.Sobel(I, cv2.CV_64F, 0, 1)
+        sobelY = cv2.Sobel(I, cv2.CV_64F, 0, 1)        
         
         # Arrays for holding information about orientation and magnitude og each gradient
-        orientation = np.zeros(I.shape)
-        magnitude = np.zeros(I.shape)
+        #orientation = np.zeros(I.shape)
+        #magnitude = np.zeros(I.shape)
         
         # Calculate orientation and magnitude of each gradient
-        for x in range(I.shape[0]):
-            for y in range(I.shape[1]):
-                orientation[x][y] = np.arctan2(sobelY[x][y], sobelX[x][y]) * (180 / m.pi)
-                magnitude[x][y] = m.sqrt(sobelY[x][y] ** 2 + sobelX[x][y] ** 2)
+        #for x in range(I.shape[0]):
+            #for y in range(I.shape[1]):
+                #orientation[x][y] = np.arctan2(sobelY[x][y], sobelX[x][y]) * (180 / m.pi)
+                #magnitude[x][y] = m.sqrt(sobelY[x][y] ** 2 + sobelX[x][y] ** 2)
         
-        return orientation, magnitude
+        magnitude = cv2.magnitude(sobelX, sobelY)
+        orientation = cv2.phase(sobelX, sobelY)        
+        
+        return sobelX, sobelY, magnitude, orientation
+
+    def __showQuiverPlot(self, I, orientation, magnitude, gx, gy):
+        ''' Plot the quiver plot - not perfect due to time constraints.
+        inspired by http://matplotlib.org/1.4.0/examples/pylab_examples/quiver_demo.html'''
+        res = 5
+        gray = I.copy()
+        N, M = gray.shape
+        X, Y = np.meshgrid(np.arange(0, M, res), np.arange(0, N, res))
+        U = magnitude * np.cos(orientation)
+        V = magnitude * np.sin(orientation)
+        
+        if self.Figure:
+            self.Figure.clear()
+        else:
+            self.Figure = figure(1)
+        imshow(gray, cmap=cm.gray)
+        quiver(X, Y, U[::res, ::res], V[::res, ::res])
+        self.Figure.show()        
  
      
     def __CircleTest(self, grayscale, centerPoints):
@@ -610,8 +642,7 @@ class Assignment1(object):
             newPupil[t] = maxPoint
             t = t + 1
             # < fitPoints to model using least squares - cv2.fitellipse(newPupil) >
-        return cv2.fitEllipse(newPupil)
- 
+        return cv2.fitEllipse(newPupil)     
     
     def __FindMaxGradientValueOnNormal(self, gradientMagnitude, gradientOrientation, p1, p2, normal):
         # Get integer coordinates on the straight line between p1 and p2.
@@ -635,7 +666,7 @@ class Assignment1(object):
                     maxGradient = normalVals[i]
         
         # Find index of max value in normalVals
-        #maxIndex = np.argmax(normalVals)
+        maxIndex = np.argmax(normalVals)
         
         # return coordinate of max value in image coordinates
         return pts[maxIndex]
@@ -650,7 +681,7 @@ class Assignment1(object):
         cv2.imshow("Original", self.OriginalImage)
 
         # Get a copy of the current original image.
-        self.ResultImage = image = self.OriginalImage.copy()
+        self.ResultImage = image = self.OriginalImage.copy()    
 
         # Extract the values of the sliders.
         sliderVals = self.__GetSliderValues()
@@ -659,12 +690,12 @@ class Assignment1(object):
         grayscale = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
         
         # Equalize the histogram
-        grayscale = cv2.equalizeHist(grayscale)
-        
+        ##grayscale = cv2.equalizeHist(grayscale)
+
         # Normal threshold methods for pupil, glints and iris
         pupils = self.__GetPupil(grayscale,  sliderVals["pupilThr"], sliderVals["pupilMinSize"], sliderVals["pupilMaxSize"], sliderVals["pupilMinExtend"], sliderVals["pupilMaxExtend"])
-        glints = self.__GetGlints(grayscale, sliderVals["glintThr"], sliderVals["glintMinSize"], sliderVals["glintMaxSize"])
-        pupils, glints = self.__FilterPupilGlint(pupils, glints)
+        #glints = self.__GetGlints(grayscale, sliderVals["glintThr"], sliderVals["glintMinSize"], sliderVals["glintMaxSize"])
+        #pupils, glints = self.__FilterPupilGlint(pupils, glints)
         #irises = self.__GetIrisUsingThreshold(grayscale, sliderVals["irisThr"], sliderVals["irisMinSize"], sliderVals["irisMaxSize"])
         
         # Kmeans methods for finding threshold and pupils by kmeans.
@@ -677,7 +708,7 @@ class Assignment1(object):
         #rightTemplate = self.RightTemplate
         #corners = self.__GetEyeCorners(image, leftTemplate, rightTemplate)
 
-        ## For Iris Detection - Assignment #02 (Part 02)
+        # For Iris Detection - Assignment #02 (Part 02)
         #iris = self.__CircularHough(grayscale)
 
         # Display results.
@@ -696,27 +727,34 @@ class Assignment1(object):
         #self.__SetText(image, (x, y + 8 * step), "glintMaxSize :" + str(sliderVals["glintMaxSize"]))
 
         # Get gradient magnitudes and orientations from image
-        #orientation, magnitude = self.__getGradientImageInfo(grayscale)
-
-        ## Uncomment these lines as your methods start to work to display the result.
+        gX, gY, magnitude, orientation = self.__getGradientImageInfo(grayscale)  
+        
+        # Show quiver plot
+        self.__showQuiverPlot(grayscale, orientation, magnitude, gX, gY)
+        
+        # Uncomment these lines as your methods start to work to display the result.
         for pupil in pupils:
             # For pupil by thresholding and kmeans
-            cv2.ellipse(image, pupil, (0, 255, 0), 1)
+            #cv2.ellipse(image, pupil, (0, 255, 0), 1)
             center = int(pupil[0][0]), int(pupil[0][1])
             cv2.circle(image, center, 2, (0,0,255), 4)
             
             # For pupil by using normals
-        #    contour = self.__FindEllipseContour(image, magnitude, orientation, center, 70)
-        #    cv2.ellipse(image, contour, (0,0,255), 1)
-        #    cv2.circle(image, center, 2, (0,0,255), 4)
+            
+            contour = self.__FindEllipseContour(image, magnitude, orientation, center, 70)
+            cv2.ellipse(image, contour, (0,0,255), 1)
+            cv2.circle(image, center, 2, (0,0,255), 4)
         
-        
-        for glint in glints:
-            center = int(glint[0]), int(glint[1])
-            cv2.circle(image, center, 2, (255, 0, 255), 5)
+        #for glint in glints:
+            #center = int(glint[0]), int(glint[1])
+            #cv2.circle(image, center, 2, (255, 0, 255), 5)
             
         #for iris in irises:
-        #    cv2.ellipse(image, iris, (0, 255, 0), 1)        
+            #cv2.ellipse(image, iris, (0, 255, 0), 1)      
+            #center = int(iris[0][0]), int(iris[0][1])
+            #irisRadius = iris[1][0] / 2
+            #contour = self.__FindEllipseContour(image, magnitude, orientation, center, irisRadius)
+            #cv2.ellipse(image, contour, (0,0,255), 1)
            
         #if corners != []:
             #left_from, left_to, right_from, right_to = corners
