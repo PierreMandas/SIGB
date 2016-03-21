@@ -604,13 +604,12 @@ class Assignment1(object):
         U = magnitude * np.cos(orientation)
         V = magnitude * np.sin(orientation)
         
-        if self.Figure:
-            self.Figure.clear()
-        else:
+        if not self.Figure:
             self.Figure = figure(1)
         imshow(gray, cmap=cm.gray)
         quiver(X, Y, U[::res, ::res], V[::res, ::res])
-        self.Figure.show()        
+        #self.Figure.canvas.draw()
+        self.Figure.show()
  
      
     def __CircleTest(self, grayscale, centerPoints):
