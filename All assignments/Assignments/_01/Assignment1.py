@@ -266,9 +266,9 @@ class Assignment1(object):
         val, threshold = cv2.threshold(grayscale, threshold, 255, cv2.THRESH_BINARY_INV)
         
         # Morphology by using an ellipse kernel with a closing and opening of 1 iteration each.
-        #kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(7,7)) # Elipse-shaped kernel
-        #threshold = cv2.morphologyEx(threshold, cv2.MORPH_CLOSE, kernel, iterations=1)
-        #threshold = cv2.morphologyEx(threshold, cv2.MORPH_OPEN, kernel, iterations=1)
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(7,7)) # Elipse-shaped kernel
+        threshold = cv2.morphologyEx(threshold, cv2.MORPH_CLOSE, kernel, iterations=1)
+        threshold = cv2.morphologyEx(threshold, cv2.MORPH_OPEN, kernel, iterations=1)
         
         # Show thresholded image
         cv2.imshow("Pupil threshold", threshold)
@@ -283,7 +283,7 @@ class Assignment1(object):
         # Iterate through each blob and calculate properties of the blob
         for cnt in contours:
             p = props.CalcContourProperties(cnt, ["centroid", "area", "extend"])
-            #x,y = p["Centroid"]
+            x,y = p["Centroid"]
             area = p["Area"]
             extend = p["Extend"]
             
@@ -659,7 +659,6 @@ class Assignment1(object):
             # < Get the endpoints of the normal -> p1 , p2 >
             normal = dx, dy
             maxPoint = self.__FindMaxGradientValueOnNormal(gradientMagnitude, gradientOrientation, pointCoord, estimatedCenter, normal)
-            print maxPoint
             #cv2.circle(img, tuple(maxPoint), 2, (0,255,255), 2)
             # < store maxPoint in newPupil >
             newPupil[t] = maxPoint
@@ -736,9 +735,9 @@ class Assignment1(object):
         #threshold = self.__ThresholdFromKMeans(centroids)
         
         # Do template matching.
-        leftTemplate  = self.LeftTemplate
-        rightTemplate = self.RightTemplate
-        corners = self.__GetEyeCorners(image, leftTemplate, rightTemplate)
+        #leftTemplate  = self.LeftTemplate
+        #rightTemplate = self.RightTemplate
+        #corners = self.__GetEyeCorners(image, leftTemplate, rightTemplate)
 
         # For Iris Detection - Assignment #02 (Part 02)
         #iris = self.__CircularHough(grayscale)
@@ -774,8 +773,8 @@ class Assignment1(object):
             #cv2.circle(image, center, 2, (0,0,255), 4)
         
         #for glint in glints:
-        #    center = int(glint[0]), int(glint[1])
-        #    cv2.circle(image, center, 2, (255, 0, 255), 5)
+            #center = int(glint[0]), int(glint[1])
+            #cv2.circle(image, center, 2, (255, 0, 255), 5)
         
         
         # For iris using normals
@@ -785,10 +784,10 @@ class Assignment1(object):
         #for iris in irises:
             #cv2.ellipse(image, irises, (0, 255, 0), 1)
            
-        if corners != []:
-            left_from, left_to, right_from, right_to = corners
-            cv2.rectangle(image, left_from , left_to, (0,255,0))
-            cv2.rectangle(image, right_from , right_to, (0,255,0))
+        #if corners != []:
+            #left_from, left_to, right_from, right_to = corners
+            #cv2.rectangle(image, left_from , left_to, (0,255,0))
+            #cv2.rectangle(image, right_from , right_to, (0,255,0))
 
         # Show the final processed image.
         cv2.imshow("Results", image)

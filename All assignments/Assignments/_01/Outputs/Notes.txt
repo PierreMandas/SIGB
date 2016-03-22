@@ -1,86 +1,85 @@
-Ex101_A01:
+Ex101_A01: (eye01.avi)
 	- Thr: 105
 	
-Ex101_A02:
+Ex101_A02: (eye07.avi)
 	- Thr: 50
 	
-Ex101_B01:
+Ex101_B01: (eye01.avi)
 	- Thr: 115
 	- MinSize: 65 * 50
 	- MaxSize: 105 * 50
-	- MinExtend: 0.60
-	- MaxExtend: 0.75
+	- MinExtend: 60 * 0.01
+	- MaxExtend: 75 * 0.01
 	
-Ex101_B02:
+Ex101_B02: (eye07.avi)
 	- Thr: 58
 	- MinSize: 15 * 50
 	- MaxSize: 40 * 50
-	- MinExtend: 0.55
-	- MaxExtend: 0.80
+	- MinExtend: 60 * 0.01
+	- MaxExtend: 75 * 0.01
 	
-Ex101_C01:
+Ex101_C01: (eye01.avi)
 	- Thr: 127
 	- MinSize: 80 * 50
 	- MaxSize: 105 * 50
 	- MinExtend: 0.60
 	- MaxExtend: 0.85
 	
-Ex101_C02:
+Ex101_C02: (eye07.avi)
 	- Thr: 58
 	- MinSize: 15 * 50
 	- MaxSize: 25 * 50
 	- MinExtend: 0.60
 	- MaxExtend: 0.80
 	
-Ex103_A01:
+Ex103_A01: (eye01.avi)
 	- glintThr: 245
 	- MinSize: 700 * 0.1
 	- MaxSize: 1300 * 0.1
 	
-Ex103_A02:
+Ex103_A02: (eye07.avi)
 	- glintThr: 250
 	- MinSize: 0 * 0.1
 	- MaxSize: 480 * 0.1
 	
-Ex103_B01: Own recording needed
-Ex103_B02: Own recording needed
+Ex103_B01: (OwnRecording.mp4)
+	- pupilThr: 58
+	- glintThr: 240
+	- pupilMinSize: 60 * 50
+	- pupilMaxSize: 110 * 50
+	- glintMinSize: 0 * 0.1
+	- glintMaxSize: 200 * 0.1
 
-Ex102_A01_Extra:
+Ex102_A01_Extra: (eye01.avi)
 	- Thr: 120
 	- MinSize: 70 * 50
 	- MaxSize: 110 * 50
 	- MinExtend: 0.60
 	- MaxExtend: 0.75
 	
-Ex102_A02_Extra:
+Ex102_A02_Extra: (eye07.avi)
 	- Thr: 57
 	- MinSize: 15 * 50
 	- MaxSize: 35 * 50
 	- MinExtend: 0.65
 	- MaxExtend: 0.75
 	
-Ex102_B01_Extra:
-	- Thr: 78
-	- MinSize: 40 * 50
-	- MaxSize: 70 * 50
-	- MinExtend: 0.60
-	- MaxExtend: 0.75
+Ex103_C01_Extra: (OwnRecording.mp4)
+	- glintThr: 54
+	- glintMinSize: 600 * 0.1
+	- glintMaxSize: 2000 * 0.1
 	
-Ex102_B02_Extra:
-	- Thr: 83
-	- MinSize: 40 * 50
-	- MaxSize: 70 * 50
-	- MinExtend: 0.60
-	- MaxExtend: 0.80
+Ex106_I01: (OwnRecording.mp4)
+	- pupilThr: 80
+	- pupilMinExtend: 60
+	- pupilMaxExtend: 100
 	
-Ex103_C01_Extra: Own recording needed
-Ex103_C02_Extra: Own recording needed
-
-Ex104_C01_Extra: Own recording needed
-Ex104_C02_Extra: Own recording needed
-
-Ex105_C01_Extra: Own recording needed
-Ex105_C02_Extra: Own recording needed
-
-Ex105_D01_Extra: Own recording needed
-Ex105_D02_Extra: Own recording needed
+Ex107_H01: (eye01) (Crashes with own recording, indexing error)
+	- pupilThr: 110
+	- pupilMinExtend: 60
+	- pupilMaxExtend: 100
+	- pupilMinSize: 60
+	- pupilMaxSize: 100
+	
+Ex107_L01: (eye01) (Crashes with own recording, indexing error)
+	- pupilThr: 100
