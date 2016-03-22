@@ -598,7 +598,6 @@ class Assignment1(object):
         
         return sobelX, sobelY, magnitude, orientation
 
-
     def __showQuiverPlot(self, I):
         # Use sobel to get gradients
         sobelX = cv2.Sobel(I, cv2.CV_64F, 1, 0)
@@ -614,8 +613,7 @@ class Assignment1(object):
         newSobelY = sobelY[0:w:wStep, 0:h:hStep]
     
         quiver(newSobelX, newSobelY)
-        show()    
- 
+        show()
      
     def __CircleTest(self, grayscale, centerPoints):
         nPts = 20
