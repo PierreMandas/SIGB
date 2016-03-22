@@ -517,8 +517,8 @@ class Assignment1(object):
             ccnormed_left = cv2.matchTemplate(grayscale, leftTemplate, cv2.TM_CCOEFF_NORMED)
             ccnormed_right = cv2.matchTemplate(grayscale, rightTemplate, cv2.TM_CCOEFF_NORMED)
             
-            cv2.imshow("Left Template", ccnormed_left)
-            cv2.imshow("Right Template", ccnormed_right)
+            #cv2.imshow("Left Template", ccnormed_left)
+            #cv2.imshow("Right Template", ccnormed_right)
             
             # Get upper left corner of the templates
             minVal, maxVal, minLoc, maxLoc_left_from = cv2.minMaxLoc(ccnormed_left)
@@ -562,13 +562,33 @@ class Assignment1(object):
 
         return iris
 
-    def __GetIrisUsingNormals(self, grayscale, pupil, normalLength):
+    def __GetIrisUsingNormals(self, img, gradientMagnitude, gradientOrientation, pupil, estimatedRadius, nPts=30, band=30):
         """Given a grayscale level image, the pupil candidates and the length of the normals returns a list of iris locations."""
-        iris = []
-
-        # YOUR IMPLEMENTATION HERE !!!!
-
-        return iris
+        newIris = np.zeros((50, 1, 2)).astype(np.float32)
+        
+        # Iterate over every pupil candidate
+        for ((pX, pY), pRadius, pAngle) in pupil:
+            P = SIGBTools.GetCircleSamples(center=(pX, pY), radius=estimatedRadius, numPoints=nPts)      
+            t = 0
+            # Iterate over every normal
+            for (x, y, dx, dy) in P:
+                normal = dx, dy
+                
+                # Calculate subset of normal, that are outside pupil and hits the limbus.
+                ix, iy, idx, idy = int(x), int(y), int(dx * band), int(dy * band)
+                p1 = (int(ix + idx), int(iy + idy))
+                p2 = (int(ix - idx), int(iy - idy))
+                
+                # Draw normals
+                #pointCoord = (int(ix),int(iy))
+                #cv2.circle(img, p1, 2, (0,0,255), 2)
+                #cv2.line(img, p1, p2, (0,0,255))                 
+                
+                maxPoint = self.__FindMaxGradientValueOnNormal(gradientMagnitude, gradientOrientation, p1, p2, normal)
+                #cv2.circle(img, tuple(maxPoint), 2, (0,255,255), 2)
+                newIris[t] = maxPoint
+                t = t + 1
+            return cv2.fitEllipse(newIris)
 
     def __GetIrisUsingSimplifyedHough(self, grayscale, pupil):
         """Given a grayscale level image and the pupil candidates returns a list of iris locations using a simplified Hough Transformation."""
@@ -639,12 +659,13 @@ class Assignment1(object):
             # < Get the endpoints of the normal -> p1 , p2 >
             normal = dx, dy
             maxPoint = self.__FindMaxGradientValueOnNormal(gradientMagnitude, gradientOrientation, pointCoord, estimatedCenter, normal)
+            print maxPoint
             #cv2.circle(img, tuple(maxPoint), 2, (0,255,255), 2)
             # < store maxPoint in newPupil >
             newPupil[t] = maxPoint
             t = t + 1
             # < fitPoints to model using least squares - cv2.fitellipse(newPupil) >
-        return cv2.fitEllipse(newPupil)     
+        return cv2.fitEllipse(newPupil)
     
     def __FindMaxGradientValueOnNormal(self, gradientMagnitude, gradientOrientation, p1, p2, normal):
         # Get integer coordinates on the straight line between p1 and p2.
@@ -694,12 +715,18 @@ class Assignment1(object):
         # Equalize the histogram
         #grayscale = cv2.equalizeHist(grayscale)
         #cv2.imshow("Histogram Equalization", grayscale)
+        
+        # Gaussian blur the image. Used for pupil detection with normals, to get better results.
+        grayscale = cv2.GaussianBlur(grayscale, (7,7), 20)        
+
+        # Get gradient magnitudes and orientations from image
+        gX, gY, magnitude, orientation = self.__getGradientImageInfo(grayscale)         
 
         # Normal threshold methods for pupil, glints and iris
         pupils = self.__GetPupil(grayscale,  sliderVals["pupilThr"], sliderVals["pupilMinSize"], sliderVals["pupilMaxSize"], sliderVals["pupilMinExtend"], sliderVals["pupilMaxExtend"])
         #glints = self.__GetGlints(grayscale, sliderVals["glintThr"], sliderVals["glintMinSize"], sliderVals["glintMaxSize"])
         #pupils, glints = self.__FilterPupilGlint(pupils, glints)
-        #irises = self.__GetIrisUsingThreshold(grayscale, sliderVals["irisThr"], sliderVals["irisMinSize"], sliderVals["irisMaxSize"])
+        irises = self.__GetIrisUsingNormals(image, magnitude, orientation, pupils, 130, 50, 30)
         
         # Kmeans methods for finding threshold and pupils by kmeans.
         #labelIm, centroids = self.__DetectPupilKMeans(grayscale, K=4, distanceWeight=40, reSize=(70,70))
@@ -709,9 +736,9 @@ class Assignment1(object):
         #threshold = self.__ThresholdFromKMeans(centroids)
         
         # Do template matching.
-        #leftTemplate  = self.LeftTemplate
-        #rightTemplate = self.RightTemplate
-        #corners = self.__GetEyeCorners(image, leftTemplate, rightTemplate)
+        leftTemplate  = self.LeftTemplate
+        rightTemplate = self.RightTemplate
+        corners = self.__GetEyeCorners(image, leftTemplate, rightTemplate)
 
         # For Iris Detection - Assignment #02 (Part 02)
         #iris = self.__CircularHough(grayscale)
@@ -729,23 +756,17 @@ class Assignment1(object):
         #self.__SetText(image, (x, y + 5 * step), "pupilMaxExtend :" + str(sliderVals["pupilMaxExtend"]))        
         #self.__SetText(image, (x, y + 6 * step), "glintThr :" + str(sliderVals["glintThr"]))
         #self.__SetText(image, (x, y + 7 * step), "glintMinSize :" + str(sliderVals["glintMinSize"]))
-        #self.__SetText(image, (x, y + 8 * step), "glintMaxSize :" + str(sliderVals["glintMaxSize"]))
-
-        # Gaussian blur the image. Used for pupil detection with normals, to get better results.
-        #grayscale = cv2.GaussianBlur(grayscale, (7,7), 20)
-
-        # Get gradient magnitudes and orientations from image
-        gX, gY, magnitude, orientation = self.__getGradientImageInfo(grayscale)  
+        #self.__SetText(image, (x, y + 8 * step), "glintMaxSize :" + str(sliderVals["glintMaxSize"])) 
         
         # Show quiver plot
-        self.__showQuiverPlot(grayscale)
+        #self.__showQuiverPlot(grayscale)
         
         # Uncomment these lines as your methods start to work to display the result.
-        for pupil in pupils:
+        #for pupil in pupils:
             # For pupil by thresholding and kmeans
-            cv2.ellipse(image, pupil, (0, 255, 0), 1)
-            center = int(pupil[0][0]), int(pupil[0][1])
-            cv2.circle(image, center, 2, (0,0,255), 4)
+            #cv2.ellipse(image, pupil, (0, 255, 0), 1)
+            #center = int(pupil[0][0]), int(pupil[0][1])
+            #cv2.circle(image, center, 2, (0,0,255), 4)
             
             # For pupil by using normals
             #contour = self.__FindEllipseContour(image, magnitude, orientation, center, 70)
@@ -755,18 +776,19 @@ class Assignment1(object):
         #for glint in glints:
         #    center = int(glint[0]), int(glint[1])
         #    cv2.circle(image, center, 2, (255, 0, 255), 5)
-            
+        
+        
+        # For iris using normals
+        cv2.ellipse(image, irises, (0, 255, 0), 1)
+        
+        # For iris using thresholding
         #for iris in irises:
-        #    cv2.ellipse(image, iris, (0, 255, 0), 1)      
-            #center = int(iris[0][0]), int(iris[0][1])
-            #irisRadius = iris[1][0] / 2
-            #contour = self.__FindEllipseContour(image, magnitude, orientation, center, irisRadius)
-            #cv2.ellipse(image, contour, (0,0,255), 1)
+            #cv2.ellipse(image, irises, (0, 255, 0), 1)
            
-        #if corners != []:
-        #    left_from, left_to, right_from, right_to = corners
-        #    cv2.rectangle(image, left_from , left_to, (0,255,0))
-        #    cv2.rectangle(image, right_from , right_to, (0,255,0))
+        if corners != []:
+            left_from, left_to, right_from, right_to = corners
+            cv2.rectangle(image, left_from , left_to, (0,255,0))
+            cv2.rectangle(image, right_from , right_to, (0,255,0))
 
         # Show the final processed image.
         cv2.imshow("Results", image)
