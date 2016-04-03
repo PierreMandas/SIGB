@@ -12,10 +12,11 @@
 #<!-- Information: No additional information                                -->
 #<!-- Date       : 25/02/2016                                               -->
 #<!-- Change     : 25/02/2016 - Creation of this class                      -->
-#<!-- Review     : 25/02/2016 - Finalized                                   -->
+#<!--            : 04/03/2016 - But to compare string with "is"             -->
+#<!-- Review     : 04/03/2016 - Finalized                                   -->
 #<!--------------------------------------------------------------------------->
 
-__version__ = "$Revision: 2016022501 $"
+__version__ = "$Revision: 2016030401 $"
 
 ########################################################################
 import cv2
@@ -129,7 +130,7 @@ class RegionProps(object):
         return cv2.arcLength(curve, True)
 
     def __CalcExtend(self, moments, contour):
-        area = self.__CalcArea(contour)
+        area = self.__CalcArea(moments, contour)
         boundingBox = self.__CalcBoundingBox(contour)
         return area / (boundingBox[2] * boundingBox[3])
 

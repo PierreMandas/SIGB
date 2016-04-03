@@ -12,10 +12,11 @@
 #<!-- Information: No additional information                                -->
 #<!-- Date       : 24/02/2016                                               -->
 #<!-- Change     : 24/02/2016 - Creation of this class                      -->
-#<!-- Review     : 24/02/2016 - Finalized                                   -->
+#<!--            : 29/03/2016 - Add new features for Assignment #02         -->
+#<!-- Review     : 29/03/2016 - Finalized                                   -->
 #<!--------------------------------------------------------------------------->
 
-__version__ = "$Revision: 2016022401 $"
+__version__ = "$Revision: 2016032901 $"
 
 ########################################################################
 import math
@@ -23,6 +24,9 @@ import numpy as np
 import os
 import pickle
 
+from Framework.Augmented.AugmentedManager         import AugmentedManager
+from Framework.Calibration.CalibrationManager     import CalibrationManager
+from Framework.ImageProcessing.ImageManager       import ImageManager
 from Framework.ImageProcessing.RegionProps        import RegionProps as Props
 from Framework.ImageProcessing.ROISelector        import ROISelector as Selector
 from Framework.RecordingVideos.RecordingManager   import RecordingManager
@@ -81,7 +85,7 @@ def ROISelector(image):
 #----------------------------------------------------------------------#
 #                       RecordingVideos Methods                        #
 #----------------------------------------------------------------------#
-def RecordingVideos(filepath, size):
+def RecordingVideos(filepath, fps=30.0, size=(640, 480)):
     """
     RecordingVideos(filepath, size) -> True or False
 
@@ -92,7 +96,7 @@ def RecordingVideos(filepath, size):
 
     Usage: SIGBTools.RecordingVideos("C:\output.wmv", (640, 480))
     """
-    return RecordingManager.Instance.AddVideo(filepath, size=size)
+    return RecordingManager.Instance.AddVideo(filepath, fps=fps, size=size)
 
 def write(images):
     """
@@ -117,6 +121,91 @@ def close():
     Usage: SIGBTools.close()
     """
     RecordingManager.Instance.Release()
+
+#----------------------------------------------------------------------#
+#                          Augmented Methods                           #
+#----------------------------------------------------------------------#
+def CalculatePattern():
+    """
+    CalculatePattern() -> objectPoints
+
+    Creates a standard vectors of the calibration pattern points.
+    Returns: objectPoints: a vector of points from a chessboard pattern.
+    Parameters: This method does not have any parameter.
+
+    Usage: patternPoints = SIGBTools.CalculatePattern()
+    """
+    return AugmentedManager.Instance.Pattern.CalculatePattern()
+
+def DrawCoordinateSystem(image):
+    """
+    DrawCoordinateSystem(image)
+
+    Draw the coordinate axes attached to the chessboard pattern.
+    Returns: This method does not return anything.
+    Parameters: image: input image which the coordinate system will be drawn.
+
+    Usage: SIGBTools.DrawCoordinateSystem(image)
+    """
+    AugmentedManager.Instance.Cube.DrawCoordinateSystem(image)
+
+def DrawAugmentedCube(image):
+    """
+    DrawAugmentedCube(image)
+
+    Draw a cube attached to the chessboard pattern.
+    Returns: This method does not return anything.
+    Parameters: image: input image which the augmented cube will be drawn.
+
+    Usage: SIGBTools.DrawAugmentedCube(image)
+    """
+    AugmentedManager.Instance.Cube.DrawAugmentedCube(image)
+
+def FindCorners(image, isDrawed=True):
+    """
+    FindCorners(image, isDrawed=True) -> corners
+
+    The function attempts to determine whether the input image is a view of the chessboard pattern and locate the internal chessboard corners.
+    Returns: corners: an array of detected corners.
+    Parameters: image: source chessboard view. It must be an 8-bit grayscale or color image.
+                isDrawed: a boolean value informe that it is necessary to draw over the detected chessboard.
+
+    Usage: corners = SIGBTools.FindCorners(image)
+           corners = SIGBTools.FindCorners(image, isDrawed=True)
+    """
+    return AugmentedManager.Instance.Pattern.FindCorners(image)
+
+def PoseEstimationMethod1(image, corners, homographyPoints, calibrationPoints, P, K):
+    """
+    PoseEstimationMethod1(image, corners, homographyPoints, calibrationPoints, P, K) -> P2
+
+    This method uses the homography between two views for finding the extrinsic parameters (R|t) of the camera in the current view.
+    Returns: P2: an updated 3x4 floating-point projection matrix.
+    Parameters: image: input image.
+                corners: corners from the detected chessboard.
+                homographyPoints: points used to estimate a homography to the detected chessboard.
+                calibrationPoints: points used during the camera calibration process.
+                P: a 3x4 floating-point projection matrix.
+                K: a 3x3 floating-point camera matrix.
+
+    Usage: P = SIGBTools.PoseEstimationMethod1(image, corners, homographyPoints, calibrationPoints, P, K)
+    """
+    return AugmentedManager.Instance.Cube.PoseEstimationMethod1(image, corners, homographyPoints, calibrationPoints, P, K)
+
+def PoseEstimationMethod2(corners, patternPoints, K, distCoeffs):
+    """
+    PoseEstimationMethod2(corners, patternPoints, K, distCoeffs) -> P2
+
+    This function uses the chessboard pattern for finding the extrinsic parameters (R|T) of the camera in the current view.
+    Returns: P2: an updated 3x4 floating-point projection matrix.
+    Parameters: corners: corners from the detected chessboard.
+                patternPoints: points from the detected chessboard.
+                K: a 3x3 floating-point camera matrix.
+                distCoeffs: vector of distortion coefficients of 4, 5, or 8 elements.
+
+    Usage: P = PoseEstimationMethod2(corners, patternPoints, K, distCoeffs)
+    """
+    return AugmentedManager.Instance.Cube.PoseEstimationMethod2(corners, patternPoints, K, distCoeffs)
 
 #----------------------------------------------------------------------#
 #                         Geometrical Methods                          #
@@ -199,6 +288,138 @@ def GetLineCoordinates(p1, p2):
     Y = retPoints[:, 1]
 
     return retPoints
+
+#----------------------------------------------------------------------#
+#                       ImageProcessing Methods                        #
+#----------------------------------------------------------------------#
+def DetectPlaneObject(image, minSize=1000):
+    """
+    DetectPlaneObject(image, minSize=1000) -> squares
+
+    A simple attempt to detect rectangular color regions in the image.
+    Returns: The squares of detected object.
+    Parameters: image: input image
+                minSize: the minimum size of detected object.
+
+    Usage: squares = SIGBTools.DetectPlaneObject(image)
+           squares = SIGBTools.DetectPlaneObject(image, 2000)
+    """
+    return ImageManager.Instance.DetectPlaneObject(image)
+
+def FrameTrackingData2BoxData(data):
+    """
+    FrameTrackingData2BoxData(data) -> rectangle
+
+    Convert a row of points into tuple of points for each rectangle.
+    Returns: A rectangle with a tuple of points.
+    Parameters: data: a row of points
+
+    Usage: SIGBTools.FrameTrackingData2BoxData(data)
+    """
+    return ImageManager.Instance.FrameTrackingData2BoxData(data)
+
+def GetHomographyTG(image, homography, texture, scale):
+    """
+    GetHomographyTG(image, homography, texture, scale) -> 3x3 homography matrix
+
+    Calculate the homography H_t^g from T to G via the homography M.
+    Returns: A 3x3 homography matrix.
+    Parameters: image: input image,
+                homography: the homography M.
+                texture: the texture to be applied in the input image.
+                scale: an integer value to define the scalling used by the texture image.
+
+    Usage: Htg = SIGBTools.GetHomographyTG(image, homography, texture, scale)
+    """
+    return ImageManager.Instance.GetHomographyTG(image, homography, texture, scale)
+
+def GetHomographyFromMouse(image1, image2, N=4):
+    """
+    GetHomographyFromMouse(image1, image2, N=4) -> 3x3 homography matrix
+
+    Method for selecting corresponding points and calculating the homography matrix between two images.
+    Returns: A 3x3 homography matrix.
+    Parameters: image1: first input image,
+                image2: second input image,
+                N=4: number of corresponding points for calculating the homography matrix. (N >= 4)
+
+    Usage: SIGBTools.GetHomographyFromMouse(image1, image2)
+           SIGBTools.GetHomographyFromMouse(image1, image2, 4)
+    """
+    return ImageManager.Instance.GetHomographyFromMouse(image1, image2, N)
+
+def TextureMoving(image, gridPoints, texture):
+    """
+    def TextureMoving(image, gridPoints, texture) -> image
+    
+    Develop a way of solving the problem so that the texture is mapped even during rotations.
+    Returns: A processed image.
+    Parameters: image: the input image,
+                gridPoints: points of a rectangle,
+                texture: the texture to be applied in the input image.
+
+    Usage: SIGBTools.TextureMoving(image, gridPoints, texture)
+    """
+    return ImageManager.Instance.TextureMoving(image, gridPoints, texture)
+
+#----------------------------------------------------------------------#
+#                         Calibration Methods                          #
+#----------------------------------------------------------------------#
+def calibrate():
+    """
+    calibrate()
+    
+    Method used for calibrating all connected cameras.
+    Returns: This method does not return anything.
+    Parameters: This method does not have any parameter.
+
+    Usage: SIGBTools.calibrate()
+    """
+    CalibrationManager.Instance.Calibrate()
+
+def GetCameraParameters():
+    """
+    GetCameraParameters() -> P, K, R, t, distCoeffs
+
+    Returns all parameters of connected calibrated cameras.
+    Returns: P: a 3x4 floating-point projection matrix.
+             K: a 3x3 floating-point camera matrix.
+             R: vector of rotation vectors estimated for each pattern view.
+             t: vector of translation vectors estimated for each pattern view.
+             distCoeffs: vector of distortion coefficients of 4, 5, or 8 elements.
+    Parameters: This method does not have any parameter.
+
+    Usage: parameters = SIGBTools.GetCameraParameters()
+           P, K, R, t, distCoeffs = SIGBTools.GetCameraParameters()
+    """
+    P = CaptureManager.Instance.Parameters.P
+    K = CaptureManager.Instance.Parameters.K
+    R = CaptureManager.Instance.Parameters.R
+    t = CaptureManager.Instance.Parameters.t
+    distCoeffs = CaptureManager.Instance.Parameters.DistCoeffs
+
+    return P, K, R, t, distCoeffs
+
+def SetCameraParameters(P, K, R, t, distCoeffs):
+    """
+    SetCameraParameters(P, K, R, t, distCoeffs)
+
+    Returns all parameters of connected calibrated cameras.
+    Returns: This method does not return anything.
+    Parameters: P: a 3x4 floating-point projection matrix.
+                K: a 3x3 floating-point camera matrix.
+                R: vector of rotation vectors estimated for each pattern view.
+                t: vector of translation vectors estimated for each pattern view.
+                distCoeffs: vector of distortion coefficients of 4, 5, or 8 elements.
+
+    Usage: SIGBTools.SetCameraParameters(parameters)
+           SIGBTools.SetCameraParameters(P, K, R, t, distCoeffs)
+    """
+    CaptureManager.Instance.Parameters.P = P
+    CaptureManager.Instance.Parameters.K = K
+    CaptureManager.Instance.Parameters.R = R
+    CaptureManager.Instance.Parameters.t = t
+    CaptureManager.Instance.Parameters.DistCoeffs = distCoeffs
 
 #----------------------------------------------------------------------#
 #                     VideoCaptureDevices Methods                      #

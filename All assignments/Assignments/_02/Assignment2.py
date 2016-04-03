@@ -12,27 +12,25 @@
 #<!-- Information: No additional information                                -->
 #<!-- Date       : 24/10/2015                                               -->
 #<!-- Change     : 24/10/2015 - Creation of this class                      -->
-#<!-- Review     : 24/10/2015 - Finalized                                   -->
+#<!-- Review     : 29/03/2016 - Finalized                                   -->
 #<!--------------------------------------------------------------------------->
 
-__version__ = "$Revision: 2015102401 $"
+__version__ = "$Revision: 2016032901 $"
 
 ########################################################################
-import SIGBTools
-
 import cv2
 import os
 import numpy as np
-import time
 import warnings
 
 from pylab import draw
 from pylab import figure
-from pylab import imshow
 from pylab import plot
 from pylab import show
 from pylab import subplot
 from pylab import title
+
+import SIGBTools
 
 ########################################################################
 class Assignment2(object):
@@ -64,12 +62,383 @@ class Assignment2(object):
             print "\t#                         Assignment #02                        #"
             print "\t#                                                               #"
             print "\t#################################################################\n"
+            print "\t[1] Person Map Location."
+            print "\t[2] Linear Texture Mapping (Ground Floor)."
+            print "\t[3] Linear Texture Mapping (Moving Objects)."
+            print "\t[4] Linear Texture Mapping (Ensuring a Correctly Placed Texture Map)."
+            print "\t[5] Image Augmentation on Image Reality."
+            print "\t[6] Camera Calibration."
+            print "\t[7] Augmentation."
+            print "\t[8] Example \"ShowImageAndPlot()\" method."
+            print "\t[9] Example \"SimpleTextureMap()\" method."
             print "\t[0] Back.\n"
             option = raw_input("\tSelect an option: ")
 
-            if option != "0":
+            if option == "1":
+                self.__ShowFloorTrackingData()
+                #self.__CreateHomography()
+            elif option == "2":
+                self.__TextureMapGroundFloor()
+            elif option == "3":
+                self.__TextureMapGridSequence()
+            elif option == "4":
+                self.__RealisticTextureMap()
+            elif option == "5":
+                self.__TextureMapObjectSequence()
+            elif option == "6":
+                self.__CalibrateCamera()
+            elif option == "7":
+                self.__Augmentation()
+            elif option == "8":
+                self.__ShowImageAndPlot()
+            elif option == "9":
+                self.__SimpleTextureMap()
+            elif option != "0":
                 raw_input("\n\tINVALID OPTION!!!")
+
+    #----------------------------------------------------------------------#
+    #                           Solutions                                  #
+    #----------------------------------------------------------------------#
+    def __CalculateHomography(self):
+        # Load videodata and get first image from the image
+        filename = self.__path + "Videos/ITUStudent.avi"
+        SIGBTools.VideoCapture(filename, SIGBTools.CAMERA_VIDEOCAPTURE_640X480)
+        img1 = SIGBTools.read()
+        
+        # Load second image of the overview
+        img2 = cv2.imread(self.__path + "Images/ITUMap.png")
+        
+        homography, mousepoints = SIGBTools.GetHomographyFromMouse(img1, img2, 4)
+        
+        return homography
+        
+        
+    def __DisplayTrace(self, img, square, homography):
+        # Get points of the square of the feet
+        p1, p2 = square
+        
+        # Apply homography on the points. Use only the first point to draw a circle.
+        p1_map = self.__ApplyHomography(p1, homography)
+        #p2_map = self.__ApplyHomography(p2, homography)
+        
+        # Draw a circle on the image
+        cv2.circle(img, p1_map, 2, (0,0,255))
+        
+        # Show the image
+        cv2.imshow("Trace", img)
+        
+        
+    def __ApplyHomography(self, point, homography):
+        # x,y,w where w >= 1
+        p = np.ones(3)
+        p[0] = point[0]
+        p[1] = point[1]
+        
+        # Calculate mapping of points
+        p_prime = np.dot(homography, p)
+        p_prime = p_prime * 1 / p_prime[2]
+        return (int(p_prime[0]), int(p_prime[1]))    
+        
 
     #----------------------------------------------------------------------#
     #                        Private Class Methods                         #
     #----------------------------------------------------------------------#
+    def __ShowFloorTrackingData(self):
+        # Our homography estimate
+        H = self.__CalculateHomography()
+        
+        # Load videodata.
+        filename = self.__path + "Videos/ITUStudent.avi"
+        SIGBTools.VideoCapture(filename, SIGBTools.CAMERA_VIDEOCAPTURE_640X480)
+        
+        # Load image to be used for the trade
+        img_map = cv2.imread(self.__path + "Images/ITUMap.png")
+
+        # Load tracking data.
+        dataFile = np.loadtxt(self.__path + "Inputs/trackingdata.dat")
+        lenght   = dataFile.shape[0]
+
+        # Define the boxes colors.
+        boxColors = [(255, 0, 0), (0, 255, 0), (0, 0, 255)] # BGR.
+
+        # Read each frame from input video and draw the rectangules on it.
+        for i in range(lenght):
+            # Read the current image from a video file.
+            image = SIGBTools.read()
+
+            # Draw each color rectangule in the image.
+            boxes = SIGBTools.FrameTrackingData2BoxData(dataFile[i, :])
+            for j in range(3):
+                box = boxes[j]
+                cv2.rectangle(image, box[0], box[1], boxColors[j])
+                
+            # Display trace. Changes the given image
+            self.__DisplayTrace(img_map, boxes[1], H)
+
+            # Show the final processed image.
+            cv2.imshow("Ground Floor", image)
+            if cv2.waitKey(1) & 0xFF == ord("q"):
+                break
+
+        # Save the result
+        cv2.imwrite(self.__path + "Outputs/mapImage.png", img_map)
+        
+        # Save the homography
+        np.save(self.__path + "Outputs/homography1.npy", H)
+
+        # Wait 2 seconds before finishing the method.
+        cv2.waitKey(2000)
+
+        # Close all allocated resources.
+        cv2.destroyAllWindows()
+        SIGBTools.release()
+
+    def __TextureMapGroundFloor(self):
+        """Places a texture on the ground floor for each input image."""
+        # Load videodata.
+        filename = self.__path + "Videos/ITUStudent.avi"
+        SIGBTools.VideoCapture(filename, SIGBTools.CAMERA_VIDEOCAPTURE_640X480)
+
+        # Load tracking data.
+        dataFile = np.loadtxt(self.__path + "Inputs/trackingdata.dat")
+        lenght   = dataFile.shape[0]
+
+        # Define the boxes colors.
+        boxColors = [(255, 0, 0), (0, 255, 0), (0, 0, 255)] # BGR.
+
+        # Read each frame from input video and draw the rectangules on it.
+        for i in range(lenght):
+            # Read the current image from a video file.
+            image = SIGBTools.read()
+
+            # Draw each color rectangule in the image.
+            boxes = SIGBTools.FrameTrackingData2BoxData(dataFile[i, :])
+            for j in range(3):
+                box = boxes[j]
+                cv2.rectangle(image, box[0], box[1], boxColors[j])
+
+            # Show the final processed image.
+            cv2.imshow("Ground Floor", image)
+            if cv2.waitKey(1) & 0xFF == ord("q"):
+                break
+
+        # Wait 2 seconds before finishing the method.
+        cv2.waitKey(2000)
+
+        # Close all allocated resources.
+        cv2.destroyAllWindows()
+        SIGBTools.release()
+
+    def __TextureMapGridSequence(self):
+        """Skeleton for texturemapping on a video sequence."""
+        # Load videodata.
+        filename = self.__path + "Videos/Grid01.mp4"
+        SIGBTools.VideoCapture(filename, SIGBTools.CAMERA_VIDEOCAPTURE_640X480)
+
+        # Load texture mapping image.
+        texture = cv2.imread(self.__path + "Images/ITULogo.png")
+        texture = cv2.pyrDown(texture)
+
+        # Define the number and ids of inner corners per a chessboard row and column.
+        patternSize = (9, 6)
+        idx = [0, 8, 45, 53]
+
+        # Read each frame from input video.
+        while True:
+            # Read the current image from a video file.
+            image = SIGBTools.read()
+            # Blurs an image and downsamples it.
+            image = cv2.pyrDown(image)
+
+            # Finds the positions of internal corners of the chessboard.
+            corners = SIGBTools.FindCorners(image)
+            if corners is not None:
+                pass
+
+            # Show the final processed image.
+            cv2.imshow("Image", image)
+            if cv2.waitKey(1) & 0xFF == ord("q"):
+                break
+
+        # Wait 2 seconds before finishing the method.
+        cv2.waitKey(2000)
+
+        # Close all allocated resources.
+        cv2.destroyAllWindows()
+        SIGBTools.release()
+
+    def __RealisticTextureMap(self):
+        # Load videodata.
+        filename = self.__path + "Videos/ITUStudent.avi"
+        SIGBTools.VideoCapture(filename, SIGBTools.CAMERA_VIDEOCAPTURE_640X480)
+
+        # Load tracking data.
+        dataFile = np.loadtxt(self.__path + "Inputs/trackingdata.dat")
+        lenght   = dataFile.shape[0]
+
+        # Define the boxes colors.
+        boxColors = [(255, 0, 0), (0, 255, 0), (0, 0, 255)] # BGR.
+
+        # Read each frame from input video and draw the rectangules on it.
+        for i in range(lenght):
+            # Read the current image from a video file.
+            image = SIGBTools.read()
+
+            # Draw each color rectangule in the image.
+            boxes = SIGBTools.FrameTrackingData2BoxData(dataFile[i, :])
+            for j in range(3):
+                box = boxes[j]
+                cv2.rectangle(image, box[0], box[1], boxColors[j])
+
+            # Show the final processed image.
+            cv2.imshow("Ground Floor", image)
+            if cv2.waitKey(1) & 0xFF == ord("q"):
+                break
+
+        # Wait 2 seconds before finishing the method.
+        cv2.waitKey(2000)
+
+        # Close all allocated resources.
+        cv2.destroyAllWindows()
+        SIGBTools.release()
+
+    def __TextureMapObjectSequence(self):
+        """Poor implementation of simple TextureMap."""
+        # Load videodata.
+        filename = self.__path + "Videos/Scene01.mp4"
+        SIGBTools.VideoCapture(filename, SIGBTools.CAMERA_VIDEOCAPTURE_640X480)
+        drawContours = True
+
+        # Load texture mapping image.
+        texture = cv2.imread(self.__path + "Images/ITULogo.png")
+
+        # Read each frame from input video.
+        while True:
+            # Jump for each 20 frames in the video.
+            for t in range(20):
+                # Read the current image from a video file.
+                image = SIGBTools.read()
+
+            # Try to detect an object in the input image.
+            squares = SIGBTools.DetectPlaneObject(image)
+
+            # Check the corner of detected object.
+            for sqr in squares:
+                # Do texturemap here!!!!
+                # TODO
+                pass
+
+            # Draws contours outlines or filled contours.
+            if drawContours and len(squares) > 0:
+                cv2.drawContours(image, squares, -1, (0, 255, 0), 3)
+
+            # Show the final processed image.
+            cv2.imshow("Detection", image)
+            if cv2.waitKey(1) & 0xFF == ord("q"):
+                break
+
+        # Wait 2 seconds before finishing the method.
+        cv2.waitKey(2000)
+
+        # Close all allocated resources.
+        cv2.destroyAllWindows()
+        SIGBTools.release()
+
+    def __CalibrateCamera(self):
+        """Main function used for calibrating a common webcam."""
+        # Load the camera.
+        cameraID = 0
+        SIGBTools.VideoCapture(cameraID, SIGBTools.CAMERA_VIDEOCAPTURE_640X480_30FPS)
+
+        # Calibrate the connected camera.
+        SIGBTools.calibrate()
+
+        # Close all allocated resources.
+        SIGBTools.release()
+
+    def __Augmentation(self):
+        """Projects an augmentation object over the chessboard pattern."""
+        # Load the camera.
+        cameraID = 0
+        SIGBTools.VideoCapture(cameraID, SIGBTools.CAMERA_VIDEOCAPTURE_640X480_30FPS)
+
+        # Read each frame from input camera.
+        while True:
+            # Read the current image from the camera.
+            image = SIGBTools.read()
+
+            # Finds the positions of internal corners of the chessboard.
+            corners = SIGBTools.FindCorners(image, False)
+            if corners is not None:
+                pass
+
+            # Show the final processed image.
+            cv2.imshow("Augmentation", image)
+            if cv2.waitKey(1) & 0xFF == ord("q"):
+                break
+
+        # Wait 2 seconds before finishing the method.
+        cv2.waitKey(2000)
+
+        # Close all allocated resources.
+        cv2.destroyAllWindows()
+        SIGBTools.release()
+
+    def __ShowImageAndPlot(self):
+        """A simple attempt to get mouse inputs and display images using pylab."""
+        # Read the input image.
+        image  = cv2.imread(self.__path + "Images/ITUMap.png")
+        image2 = image.copy()
+
+        # Make figure and two subplots.
+        fig = figure(1)
+        ax1 = subplot(1, 2, 1)
+        ax2 = subplot(1, 2, 2)
+        ax1.imshow(image)
+        ax2.imshow(image2)
+        ax1.axis("image")
+        ax1.axis("off")
+
+        # Read 5 points from the input images.
+        points = fig.ginput(5)
+        fig.hold("on")
+
+        # Draw the selected points in both input images.
+        for point in points:
+            # Draw on matplotlib.
+            subplot(1, 2, 1)
+            plot(point[0], point[1], "rx")
+            # Draw on opencv.
+            cv2.circle(image2, (int(point[0]), int(point[1])), 10, (0, 255, 0), -1)
+
+        # Clear axis.
+        ax2.cla()
+        # Show the second subplot.
+        ax2.imshow(image2)
+        # Update display: updates are usually deferred.
+        draw()
+        show()
+        # Save with matplotlib and opencv.
+        fig.savefig(self.__path + "Outputs/imagePyLab.png")
+        cv2.imwrite(self.__path + "Outputs/imageOpenCV.png", image2)
+
+    def __SimpleTextureMap(self):
+        """Example of how linear texture mapping can be done using OpenCV."""
+        # Read the input images.
+        image1 = cv2.imread(self.__path + "Images/ITULogo.png")
+        image2 = cv2.imread(self.__path + "Images/ITUMap.png")
+
+        # Estimate the homography.
+        H, points = SIGBTools.GetHomographyFromMouse(image1, image2, 4)
+
+        # Draw the homography transformation.
+        h, w    = image2.shape[0:2]
+        overlay = cv2.warpPerspective(image1, H, (w, h))
+        result  = cv2.addWeighted(image2, 0.5, overlay, 0.5, 0)
+
+        # Show the result image.
+        cv2.imshow("SimpleTextureMap", result)
+        cv2.waitKey(0)
+
+        # Close all allocated resources.
+        cv2.destroyAllWindows()

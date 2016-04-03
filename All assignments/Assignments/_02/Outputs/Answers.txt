@@ -1,0 +1,15 @@
+Exercise 2.01 (b):
+
+Exercise 2.01 (c):
+In total, the needed amount of points would be 8, 4 from the ground floor and the map.
+The reason for this, is that a homography got a DOF (Degree of freedom) of 8.
+Therefore the amount of corresponding points needed is 4 at a minimum.
+
+Exercise 2.01 (g):
+The reason is that the camera is standing still while recording. The corresponding points
+would stay the same, even thought the image in the image sequence changes.
+
+Exercise 2.01 (h):
+This will result in a wrong mapping. As the ground floor and overview map are being moved relative
+to each other, the corresponding points would change and therefore the homography doesn't apply to
+the new corresponding points. It will be required to calculate a new homography.
