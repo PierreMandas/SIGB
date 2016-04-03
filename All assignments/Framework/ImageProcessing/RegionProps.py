@@ -130,7 +130,7 @@ class RegionProps(object):
         return cv2.arcLength(curve, True)
 
     def __CalcExtend(self, moments, contour):
-        area = self.__CalcArea(moments, contour)
+        area = self.__CalcArea(contour)
         boundingBox = self.__CalcBoundingBox(contour)
         return area / (boundingBox[2] * boundingBox[3])
 
