@@ -174,7 +174,7 @@ class Assignment2(object):
     #----------------------------------------------------------------------#
     def __ShowFloorTrackingData(self):
         # Exercise 2.01 (k)
-        # Our homography estimate
+        # Our homography
         H = self.__LoadOrSaveHomography()      
         
         # Load videodata.
@@ -250,32 +250,54 @@ class Assignment2(object):
 
     def __TextureMapGroundFloor(self):
         """Places a texture on the ground floor for each input image."""
+        # Exercise 2.02 (b)
+        # Load texture
+        texture = cv2.imread(self.__path + "Images/ITULogo.png")
+        
         # Load videodata.
         filename = self.__path + "Videos/ITUStudent.avi"
         SIGBTools.VideoCapture(filename, SIGBTools.CAMERA_VIDEOCAPTURE_640X480)
-
+        
         # Load tracking data.
         dataFile = np.loadtxt(self.__path + "Inputs/trackingdata.dat")
-        lenght   = dataFile.shape[0]
-
-        # Define the boxes colors.
-        boxColors = [(255, 0, 0), (0, 255, 0), (0, 0, 255)] # BGR.
-
-        # Read each frame from input video and draw the rectangules on it.
+        lenght   = dataFile.shape[0]        
+        
+        # Exercise 2.02 (a)
+        # Load first image from image sequence for the creation of the homography
+        floor_img = SIGBTools.read()
+        # Our homography
+        H, points = SIGBTools.GetHomographyFromMouse(texture, floor_img, -1)
+        np.save(self.__path + "Outputs/homography2.npy", H)
+        
+        # Exercise 2.02 (b)
+        # TextureMapGroundFloor.wmv image sequence images
+        texture_map_images = []        
+        
+        # Read each frame from input video and draw the texture on it
         for i in range(lenght):
             # Read the current image from a video file.
             image = SIGBTools.read()
-
-            # Draw each color rectangule in the image.
-            boxes = SIGBTools.FrameTrackingData2BoxData(dataFile[i, :])
-            for j in range(3):
-                box = boxes[j]
-                cv2.rectangle(image, box[0], box[1], boxColors[j])
+            
+            # Exercise 2.02 (b)
+            # Draw the homography transformation
+            h, w    = floor_img.shape[0:2]
+            overlay = cv2.warpPerspective(texture, H, (w, h))
+            floor_img  = cv2.addWeighted(image, 0.9, overlay, 0.1, 0)
+            texture_map_images.append(floor_img)
+            cv2.imshow("Texture", floor_img)
 
             # Show the final processed image.
             cv2.imshow("Ground Floor", image)
             if cv2.waitKey(1) & 0xFF == ord("q"):
                 break
+
+        # Exercise 2.02 (b)
+        # Make, write and close videowriter for TextureMapGroundFloor.wmv
+        h, w = texture_map_images[0].shape[:2]
+        SIGBTools.RecordingVideos(self.__path + "Outputs/TextureMapGroundFloor.wmv", 30.0, (w, h))        
+        for img in texture_map_images:
+            SIGBTools.write(img)
+        SIGBTools.close()        
 
         # Wait 2 seconds before finishing the method.
         cv2.waitKey(2000)
