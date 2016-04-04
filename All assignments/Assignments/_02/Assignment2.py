@@ -76,7 +76,6 @@ class Assignment2(object):
 
             if option == "1":
                 self.__ShowFloorTrackingData()
-                #self.__CreateHomography()
             elif option == "2":
                 self.__TextureMapGroundFloor()
             elif option == "3":
@@ -126,7 +125,27 @@ class Assignment2(object):
         
         # Show the image
         cv2.imshow("Trace", img)
+ 
         
+    def __TrackPerson(self, square, homography):
+        img_map = cv2.imread(self.__path + "Images/ITUMap.png")
+        
+        # Get points of the square of the feet
+        p1, p2 = square
+                
+        # Apply homography on the points. Use only the first point to draw a circle.
+        p1_map = self.__ApplyHomography(p1, homography)
+        p2_map = self.__ApplyHomography(p2, homography)
+                
+        # Draw a rectangle on the image
+        cv2.rectangle(img_map, p1_map, p2_map, (0,0,255))
+                
+        # Show the image
+        cv2.imshow("Tracking", img_map)
+        
+        # Return image
+        return img_map        
+ 
         
     def __ApplyHomography(self, point, homography):
         # x,y,w where w >= 1
@@ -137,22 +156,38 @@ class Assignment2(object):
         # Calculate mapping of points
         p_prime = np.dot(homography, p)
         p_prime = p_prime * 1 / p_prime[2]
-        return (int(p_prime[0]), int(p_prime[1]))    
+        return (int(p_prime[0]), int(p_prime[1]))
+
+    
+    def __LoadOrSaveHomography(self):
+        homography = None
+        try:
+            homography = np.load(self.__path + "Outputs/homography1.npy")
+        except IOError:
+            homography = self.__CalculateHomography()
+            np.save(self.__path + "Outputs/homography1.npy", homography)
+        return homography
         
 
     #----------------------------------------------------------------------#
     #                        Private Class Methods                         #
     #----------------------------------------------------------------------#
     def __ShowFloorTrackingData(self):
+        # Exercise 2.01 (k)
         # Our homography estimate
-        H = self.__CalculateHomography()
+        H = self.__LoadOrSaveHomography()      
         
         # Load videodata.
         filename = self.__path + "Videos/ITUStudent.avi"
         SIGBTools.VideoCapture(filename, SIGBTools.CAMERA_VIDEOCAPTURE_640X480)
         
-        # Load image to be used for the trade
+        # Exercise 2.01 (i)
+        # Load image to be used for the trace
         img_map = cv2.imread(self.__path + "Images/ITUMap.png")
+
+        # Exercise 2.01 (m)
+        # Map location image sequence images
+        map_location_images = []
 
         # Load tracking data.
         dataFile = np.loadtxt(self.__path + "Inputs/trackingdata.dat")
@@ -171,20 +206,40 @@ class Assignment2(object):
             for j in range(3):
                 box = boxes[j]
                 cv2.rectangle(image, box[0], box[1], boxColors[j])
-                
+            
+            # Exercise 2.01 (i)
             # Display trace. Changes the given image
             self.__DisplayTrace(img_map, boxes[1], H)
-
+            
+            # Exercise 2.01 (l)
+            # Display tracking.
+            img_map_track = self.__TrackPerson(boxes[1], H)
+            
+            # Exercise 2.01 (m)
+            # Create image for MapLocation.wmv
+            h1, w1 = image.shape[:2]
+            h2, w2 = img_map_track.shape[:2] 
+            img = np.zeros((max(h1,h2), w1+w2, 3), np.uint8)
+            img[:h1, :w1] = image
+            img[:h2, w1:w1+w2] = img_map_track
+            map_location_images.append(img)
+            
             # Show the final processed image.
             cv2.imshow("Ground Floor", image)
             if cv2.waitKey(1) & 0xFF == ord("q"):
                 break
 
-        # Save the result
+        # Exercise 2.01 (j)
+        # Save the result of tracing
         cv2.imwrite(self.__path + "Outputs/mapImage.png", img_map)
         
-        # Save the homography
-        np.save(self.__path + "Outputs/homography1.npy", H)
+        # Exercise 2.01 (m)
+        # Make, write and close videowriter for MapLocation.wmv
+        h, w = map_location_images[0].shape[:2]
+        SIGBTools.RecordingVideos(self.__path + "Outputs/MapLocation.wmv", 30.0, (w, h))        
+        for img in map_location_images:
+            SIGBTools.write(img)
+        SIGBTools.close()
 
         # Wait 2 seconds before finishing the method.
         cv2.waitKey(2000)
