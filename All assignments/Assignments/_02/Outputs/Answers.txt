@@ -13,3 +13,8 @@ Exercise 2.01 (h):
 This will result in a wrong mapping. As the ground floor and overview map are being moved relative
 to each other, the corresponding points would change and therefore the homography doesn't apply to
 the new corresponding points. It will be required to calculate a new homography.
+
+Exercise 2.03 (b):
+The texture mapping fails because of the parallel lines between the squares gets
+blurry when a slight movement of the chessboard happens. It also fails whenever
+multiple squares and their outline doesn't line up (are parallel).

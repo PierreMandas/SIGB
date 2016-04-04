@@ -309,16 +309,20 @@ class Assignment2(object):
     def __TextureMapGridSequence(self):
         """Skeleton for texturemapping on a video sequence."""
         # Load videodata.
-        filename = self.__path + "Videos/Grid01.mp4"
+        filename = self.__path + "Videos/Grid05.mp4"
         SIGBTools.VideoCapture(filename, SIGBTools.CAMERA_VIDEOCAPTURE_640X480)
 
         # Load texture mapping image.
         texture = cv2.imread(self.__path + "Images/ITULogo.png")
-        texture = cv2.pyrDown(texture)
+        texture = cv2.pyrDown(texture)       
 
         # Define the number and ids of inner corners per a chessboard row and column.
         patternSize = (9, 6)
         idx = [0, 8, 45, 53]
+        
+        # Exercise 2.03 (a)
+        # TextureMapGridSequence_Grid0X.wmv image sequence images
+        texture_map_images = []
 
         # Read each frame from input video.
         while True:
@@ -331,11 +335,22 @@ class Assignment2(object):
             corners = SIGBTools.FindCorners(image)
             if corners is not None:
                 pass
+            
+            # Exercise 2.03 (a)
+            texture_map_images.append(image)
 
             # Show the final processed image.
             cv2.imshow("Image", image)
             if cv2.waitKey(1) & 0xFF == ord("q"):
                 break
+
+        # Exercise 2.02 (b)
+        # Make, write and close videowriter for TextureMapGroundFloor.wmv
+        h, w = texture_map_images[0].shape[:2]
+        SIGBTools.RecordingVideos(self.__path + "Outputs/TextureMapGridSequence_Grid05.wmv", 30.0, (w, h))        
+        for img in texture_map_images:
+            SIGBTools.write(img)
+        SIGBTools.close()        
 
         # Wait 2 seconds before finishing the method.
         cv2.waitKey(2000)
