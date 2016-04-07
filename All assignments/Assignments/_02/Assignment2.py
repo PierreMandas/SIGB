@@ -358,7 +358,7 @@ class Assignment2(object):
 
             # Exercise 2.03 (a)
             # Finds the positions of internal corners of the chessboard.
-            corners = SIGBTools.FindCorners(image)
+            corners = SIGBTools.FindCorners(image, False)
             if corners is not None:
                 H, points = self.__GetHomography(texture, corners, idx)
                 

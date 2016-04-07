@@ -71,8 +71,8 @@ class Pattern(object):
             corners = None
 
         # Checks if the user wants to print the detected corners in the input image.
-        #if isDrawed and corners is not None:
-        #    cv2.drawChessboardCorners(image, self.Size, corners, True)
+        if isDrawed and corners is not None:
+            cv2.drawChessboardCorners(image, self.Size, corners, True)
 
         # return the detected corners.
         return corners
