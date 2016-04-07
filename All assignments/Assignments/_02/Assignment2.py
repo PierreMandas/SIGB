@@ -167,6 +167,31 @@ class Assignment2(object):
             homography = self.__CalculateHomography()
             np.save(self.__path + "Outputs/homography1.npy", homography)
         return homography
+    
+    def __GetHomography(self, texture, corners, idx):
+        """ Inspired by getHomographyFromMouse in SIGBTools
+        Calculate a homography using an image and four corner points
+        """
+        imagePoints = []
+        m, n, d = texture.shape
+        # Define corner points of texture
+        imagePoints.append([(0, 0), (float(n), 0), (float(n), float(m)), (0, m)])
+        # Append the corners of the texture
+        
+        # Define corner points of the grid
+        imagePoints.append([(float(corners[idx[0], 0, 0]), float(corners[idx[0], 0, 1])),
+                            (float(corners[idx[1], 0, 0]), float(corners[idx[1], 0, 1])),
+                            (float(corners[idx[3], 0, 0]), float(corners[idx[3], 0, 1])),
+                            (float(corners[idx[2], 0, 0]), float(corners[idx[2], 0, 1]))
+                            ])
+        
+        # Convert to openCV format
+        ip1 = np.array([[x, y] for (x, y) in imagePoints[0]])
+        ip2 = np.array([[x, y] for (x, y) in imagePoints[1]])
+        
+        # Calculate homography
+        H, mask = cv2.findHomography(ip1, ip2)
+        return H, imagePoints    
         
 
     #----------------------------------------------------------------------#
@@ -331,16 +356,21 @@ class Assignment2(object):
             # Blurs an image and downsamples it.
             image = cv2.pyrDown(image)
 
+            # Exercise 2.03 (a)
             # Finds the positions of internal corners of the chessboard.
             corners = SIGBTools.FindCorners(image)
             if corners is not None:
-                pass
-            
-            # Exercise 2.03 (a)
-            texture_map_images.append(image)
+                H, points = self.__GetHomography(texture, corners, idx)
+                
+                h, w, d = image.shape
+                overlay = cv2.warpPerspective(texture, H, (w, h))
+                grid_img = cv2.addWeighted(image, 0.4, overlay, 0.6, 0)
+                texture_map_images.append(grid_img)
+                cv2.imshow("Image", grid_img)
+            else:
+                texture_map_images.append(image)
+                cv2.imshow("Image", image)
 
-            # Show the final processed image.
-            cv2.imshow("Image", image)
             if cv2.waitKey(1) & 0xFF == ord("q"):
                 break
 

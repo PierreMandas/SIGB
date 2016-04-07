@@ -165,28 +165,6 @@ class Algorithms(object):
         overlay = cv2.warpPerspective(texture, homography, (w, h))
         cv2.addWeighted(overlay, 1, image, 1, 0, image)
         return image
-    
-    def getHomography(self, texture, corners, idx):
-        """ Inspired by getHomographyFromMouse in SIGBTools
-        Calculate a homography using an image and four corner points
-        """
-        imagePoints = []
-        m, n, d = texture.shape
-        # Define corner points
-        imagePoints.append([(float(0.0), float(0.0)), (float(n), 0), (float(n), float(m)), (0, m)])
-        # Append the corners of the texture
-        # There's probably a better way of doing this...
-        imagePoints.append([(float(corners[idx[0], 0, 0]), float(corners[idx[0], 0, 1])),
-                            (float(corners[idx[1], 0, 0]), float(corners[idx[1], 0, 1])),
-                            (float(corners[idx[3], 0, 0]), float(corners[idx[3], 0, 1])),
-                            (float(corners[idx[2], 0, 0]), float(corners[idx[2], 0, 1]))
-                            ])
-        # Convert to openCV format
-        ip1 = np.array([[x, y] for (x, y) in imagePoints[0]])
-        ip2 = np.array([[x, y] for (x, y) in imagePoints[1]])
-        # Calculate homography
-        H, mask = cv2.findHomography(ip1, ip2)
-        return H, imagePoints    
 
     def TextureMoving(self, image, gridPoints, texture):
         """Develop a way of solving the problem so that the texture is mapped even during rotations."""
