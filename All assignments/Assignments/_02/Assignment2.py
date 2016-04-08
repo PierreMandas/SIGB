@@ -333,8 +333,12 @@ class Assignment2(object):
 
     def __TextureMapGridSequence(self):
         """Skeleton for texturemapping on a video sequence."""
+        
+        # Last corners found
+        lastCorners = None
+        
         # Load videodata.
-        filename = self.__path + "Videos/Grid05.mp4"
+        filename = self.__path + "Videos/Grid01.mp4"
         SIGBTools.VideoCapture(filename, SIGBTools.CAMERA_VIDEOCAPTURE_640X480)
 
         # Load texture mapping image.
@@ -352,24 +356,34 @@ class Assignment2(object):
         # Read each frame from input video.
         while True:
             # Read the current image from a video file.
-            image = SIGBTools.read()
+            image = SIGBTools.read()           
+            
             # Blurs an image and downsamples it.
-            image = cv2.pyrDown(image)
+            image = cv2.pyrDown(image)     
 
             # Exercise 2.03 (a)
             # Finds the positions of internal corners of the chessboard.
-            corners = SIGBTools.FindCorners(image, False)
-            if corners is not None:
-                H, points = self.__GetHomography(texture, corners, idx)
-                
-                h, w, d = image.shape
-                overlay = cv2.warpPerspective(texture, H, (w, h))
-                grid_img = cv2.addWeighted(image, 0.4, overlay, 0.6, 0)
-                texture_map_images.append(grid_img)
-                cv2.imshow("Image", grid_img)
+            imgCopy = image.copy()  # Use copy of image to find corners so the grid isn't saved to the image
+            corners = SIGBTools.FindCorners(imgCopy)
+            if corners is not None:     
+                H, points = self.__GetHomography(texture, corners, idx)  
+                image = self.__OverlayImage(H, texture, image)
+                lastCorners = corners
             else:
-                texture_map_images.append(image)
-                cv2.imshow("Image", image)
+                # Apply Unsharp Mask
+                blurred = self.__UnSharpMask(image)
+                corners = SIGBTools.FindCorners(blurred)
+                if corners is not None:  # Unsharp mask has helped to find the corners
+                    print "Found corners using unsharp filter..."   
+                    H, points = self.__GetHomography(texture, corners, idx)               
+                    image = self.__OverlayImage(H, texture, image)
+                    lastCorners = corners   
+                elif lastCorners is not None:  # Unsharp mask not working, so use last record corners
+                    print "Could not find corners using unsharp filter..."
+                    H, points = self.__GetHomography(texture, lastCorners, idx)
+                    image = self.__OverlayImage(H, texture, image)                    
+            texture_map_images.append(image)
+            cv2.imshow("Image", image)
 
             if cv2.waitKey(1) & 0xFF == ord("q"):
                 break
@@ -380,7 +394,7 @@ class Assignment2(object):
         SIGBTools.RecordingVideos(self.__path + "Outputs/TextureMapGridSequence_Grid05.wmv", 30.0, (w, h))        
         for img in texture_map_images:
             SIGBTools.write(img)
-        SIGBTools.close()        
+        SIGBTools.close()
 
         # Wait 2 seconds before finishing the method.
         cv2.waitKey(2000)
@@ -388,6 +402,15 @@ class Assignment2(object):
         # Close all allocated resources.
         cv2.destroyAllWindows()
         SIGBTools.release()
+
+    def __OverlayImage(self, homography, texture, image):
+        h, w, d = image.shape
+        overlay = cv2.warpPerspective(texture, homography, (w, h))
+        return cv2.addWeighted(image, 1, overlay, 1, 0)
+    
+    def __UnSharpMask(self, image):
+        blur = cv2.GaussianBlur(image, (0, 0), 5)        
+        return cv2.addWeighted(image, 1.5, blur, -0.5, 0)
 
     def __RealisticTextureMap(self):
         # Load videodata.
