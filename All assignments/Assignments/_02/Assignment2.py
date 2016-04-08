@@ -338,7 +338,7 @@ class Assignment2(object):
         lastCorners = None
         
         # Load videodata.
-        filename = self.__path + "Videos/Grid01.mp4"
+        filename = self.__path + "Videos/Grid05.mp4"
         SIGBTools.VideoCapture(filename, SIGBTools.CAMERA_VIDEOCAPTURE_640X480)
 
         # Load texture mapping image.
