@@ -413,6 +413,10 @@ class Assignment2(object):
         return cv2.addWeighted(image, 1.5, blur, -0.5, 0)
 
     def __RealisticTextureMap(self):
+        
+        # Empty image list
+        texture_map_images = []
+        
         # Load videodata.
         filename = self.__path + "Videos/ITUStudent.avi"
         SIGBTools.VideoCapture(filename, SIGBTools.CAMERA_VIDEOCAPTURE_640X480)
@@ -423,6 +427,22 @@ class Assignment2(object):
 
         # Define the boxes colors.
         boxColors = [(255, 0, 0), (0, 255, 0), (0, 0, 255)] # BGR.
+        
+        # Load texture mapping image.
+        texture = cv2.imread(self.__path + "Images/ITULogo.png")
+        texture = cv2.pyrDown(texture)    
+        
+        # Load saved homography from ex 2.01
+        H = np.load(self.__path + "Outputs/homography1.npy")
+            
+        # Load the map
+        ituMap = cv2.imread(self.__path + "Images/ITUMap.png")
+        
+        # Get the homography of the texture to the ground floor
+        homographyTG = SIGBTools.GetHomographyTG(ituMap, H, texture, .5)      
+        # Save the homography
+        np.save(self.__path + "Outputs/homography3.npy", H)       
+        
 
         # Read each frame from input video and draw the rectangules on it.
         for i in range(lenght):
@@ -434,11 +454,22 @@ class Assignment2(object):
             for j in range(3):
                 box = boxes[j]
                 cv2.rectangle(image, box[0], box[1], boxColors[j])
+                
+            # Apply the homography to map the texture to the ground floor
+            h,w,d = image.shape
+            overlay = cv2.warpPerspective(texture, homographyTG, (w, h))
+            image = cv2.addWeighted(image, 0.8, overlay, 0.2, 3)   
 
+            # Save the current image
+            texture_map_images.append(image)
+            
             # Show the final processed image.
             cv2.imshow("Ground Floor", image)
             if cv2.waitKey(1) & 0xFF == ord("q"):
                 break
+        
+        # Make, write and close videowriter for TextureMapGroundFloor.wmv
+        self.__Record("RealisticTextureMap.wmv", texture_map_images)
 
         # Wait 2 seconds before finishing the method.
         cv2.waitKey(2000)
@@ -446,6 +477,13 @@ class Assignment2(object):
         # Close all allocated resources.
         cv2.destroyAllWindows()
         SIGBTools.release()
+
+    def __Record(self, filename, sequence):
+        h, w = sequence[0].shape[:2]
+        SIGBTools.RecordingVideos(self.__path + "Outputs/" + filename, 30.0, (w, h))        
+        for img in sequence:
+            SIGBTools.write(img)
+        SIGBTools.close()  
 
     def __TextureMapObjectSequence(self):
         """Poor implementation of simple TextureMap."""

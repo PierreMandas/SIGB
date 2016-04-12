@@ -31,6 +31,7 @@ from pylab import figure
 from pylab import plot
 from pylab import subplot
 from pylab import title
+from pylab import imshow
 
 from ClassProperty import ClassProperty
 
@@ -160,11 +161,42 @@ class Algorithms(object):
             boxes.append(box)
         return boxes
 
+    def GetPointFromMouse(self, image):
+        #Copy image
+        drawImage1 = copy(image)            
+
+        #Make figure
+        fig = figure("Point selection")
+
+        title("Click on a plane in the image")
+
+        #Show image and request input
+        imshow(drawImage1)
+        point = fig.ginput(1, -1)    
+        return point
+
     def GetHomographyTG(self, image, homography, texture, scale):
-        h, w, d = image.shape
-        overlay = cv2.warpPerspective(texture, homography, (w, h))
-        cv2.addWeighted(overlay, 1, image, 1, 0, image)
-        return image
+        # Define where the texture is placed by clicking on the map
+        point = self.GetPointFromMouse(image)
+
+        # Scale the texture
+        texH, texW, texD = texture.shape
+        texture = cv2.resize(texture, (int(texW * scale), int(texH * scale)))
+
+        # Define the homography 
+        (x, y) = point[0]
+        homographyTM = np.matrix([
+            [scale, 0, x],
+            [0, scale, y],
+            [0, 0, 1]])
+
+        homographyMG = np.linalg.inv(homography)
+        homographyTG = np.dot(homographyMG, homographyTM)   
+
+        #Normalize homography
+        homography = homographyTG / homographyTG[2,2]        
+
+        return homographyTG
 
     def TextureMoving(self, image, gridPoints, texture):
         """Develop a way of solving the problem so that the texture is mapped even during rotations."""
