@@ -138,7 +138,7 @@ class Assignment2(object):
         p2_map = self.__ApplyHomography(p2, homography)
                 
         # Draw a rectangle on the image
-        cv2.rectangle(img_map, p1_map, p2_map, (0,0,255))
+        cv2.rectangle(img_map, p1_map, p2_map, (0,255,0))
                 
         # Show the image
         cv2.imshow("Tracking", img_map)
