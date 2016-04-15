@@ -22,6 +22,7 @@ import cv2
 import os
 import numpy as np
 import warnings
+import sys
 
 from pylab import draw
 from pylab import figure
@@ -168,7 +169,7 @@ class Assignment2(object):
             np.save(self.__path + "Outputs/homography1.npy", homography)
         return homography
     
-    def __GetHomography(self, texture, corners, idx):
+    def __GetHomography(self, texture, corners, idx=None):
         """ Inspired by getHomographyFromMouse in SIGBTools
         Calculate a homography using an image and four corner points
         """
@@ -176,14 +177,19 @@ class Assignment2(object):
         m, n, d = texture.shape
         # Define corner points of texture
         imagePoints.append([(0, 0), (float(n), 0), (float(n), float(m)), (0, m)])
+        print imagePoints[0]
+        
         # Append the corners of the texture
         
         # Define corner points of the grid
-        imagePoints.append([(float(corners[idx[0], 0, 0]), float(corners[idx[0], 0, 1])),
+        if idx != None:
+            imagePoints.append([(float(corners[idx[0], 0, 0]), float(corners[idx[0], 0, 1])),
                             (float(corners[idx[1], 0, 0]), float(corners[idx[1], 0, 1])),
                             (float(corners[idx[3], 0, 0]), float(corners[idx[3], 0, 1])),
                             (float(corners[idx[2], 0, 0]), float(corners[idx[2], 0, 1]))
                             ])
+        else:
+            imagePoints.append(corners)
         
         # Convert to openCV format
         ip1 = np.array([[x, y] for (x, y) in imagePoints[0]])
@@ -338,7 +344,8 @@ class Assignment2(object):
         lastCorners = None
         
         # Load videodata.
-        filename = self.__path + "Videos/Grid05.mp4"
+        videoname = "Grid05"
+        filename = self.__path + "Videos/" + videoname + ".mp4"
         SIGBTools.VideoCapture(filename, SIGBTools.CAMERA_VIDEOCAPTURE_640X480)
 
         # Load texture mapping image.
@@ -390,11 +397,11 @@ class Assignment2(object):
 
         # Exercise 2.02 (b)
         # Make, write and close videowriter for TextureMapGroundFloor.wmv
-        h, w = texture_map_images[0].shape[:2]
-        SIGBTools.RecordingVideos(self.__path + "Outputs/TextureMapGridSequence_Grid05.wmv", 30.0, (w, h))        
-        for img in texture_map_images:
-            SIGBTools.write(img)
-        SIGBTools.close()
+
+        filename = "TextureMapGridSequence_" + videoname
+        self.__Record(filename, texture_map_images)
+
+
 
         # Wait 2 seconds before finishing the method.
         cv2.waitKey(2000)
@@ -406,7 +413,8 @@ class Assignment2(object):
     def __OverlayImage(self, homography, texture, image):
         h, w, d = image.shape
         overlay = cv2.warpPerspective(texture, homography, (w, h))
-        return cv2.addWeighted(image, 1, overlay, 1, 0)
+        #return cv2.addWeighted(image, 1, overlay, 1, 0)   
+        return cv2.add(image, overlay)
     
     def __UnSharpMask(self, image):
         blur = cv2.GaussianBlur(image, (0, 0), 5)        
@@ -469,7 +477,7 @@ class Assignment2(object):
                 break
         
         # Make, write and close videowriter for TextureMapGroundFloor.wmv
-        self.__Record("RealisticTextureMap.wmv", texture_map_images)
+        self.__Record("RealisticTextureMap", texture_map_images)
 
         # Wait 2 seconds before finishing the method.
         cv2.waitKey(2000)
@@ -480,7 +488,7 @@ class Assignment2(object):
 
     def __Record(self, filename, sequence):
         h, w = sequence[0].shape[:2]
-        SIGBTools.RecordingVideos(self.__path + "Outputs/" + filename, 30.0, (w, h))        
+        SIGBTools.RecordingVideos(self.__path + "Outputs/" + filename + ".wmv", 30.0, (w, h))        
         for img in sequence:
             SIGBTools.write(img)
         SIGBTools.close()  
@@ -507,9 +515,9 @@ class Assignment2(object):
 
             # Check the corner of detected object.
             for sqr in squares:
-                # Do texturemap here!!!!
-                # TODO
-                pass
+                H, points = self.__GetHomography(texture, sqr)  
+                image = self.__OverlayImage(H, texture, image)
+                #lastCorners = corners
 
             # Draws contours outlines or filled contours.
             if drawContours and len(squares) > 0:
@@ -535,10 +543,59 @@ class Assignment2(object):
 
         # Calibrate the connected camera.
         SIGBTools.calibrate()
+        
+        # 2.06(e) load the calibration data
+        path = "./Framework/VideoCaptureDevices/CalibrationData/"
+        cameraMatrix = np.load(path + "Camera_0_cameraMatrix.npy")
+        distortionCoefficient = np.load(path + "Camera_0_distCoeffs.npy")
+        imgPoints = np.load(path + "Camera_0_img_points.npy")
+        objPoints = np.load(path + "Camera_0_obj_points.npy")
+        rotationVectors = np.load(path + "Camera_0_rvecs.npy")
+        translationVectors = np.load(path + "Camera_0_tvecs.npy")     
+        
+        # 2.06(f) Calculate P        
+        P = self.__get_P_for_camera_matrix(cameraMatrix, rotationVectors[0], translationVectors[0])
+        
+        # 2.06(g) Check if P is correct
+        imgPath = "./Framework/VideoCaptureDevices/CalibrationData/"
+        img = cv2.imread(imgPath + "Camera_0_chessboard1.png")
+        
+        points = self.__projection(P, objPoints[0])
+        
+        for p in points:
+            C = int(p[0]), int(p[1])
+            cv2.circle(img, C, 2, (0, 0, 255), 2)
+        cv2.imshow('Projection', img)   
+        
+        # 2.06(h)
+        undistorted = cv2.undistort(img, cameraMatrix, distortionCoefficient)
+        cv2.imwrite(self.__path + "Outputs/Camera_0_chessboard1_result.png", undistorted)
+        cv2.imshow('Undistorted Projection', undistorted)
+        cv2.waitKey(0)     
 
         # Close all allocated resources.
         SIGBTools.release()
-
+        
+    def __get_P_for_camera_matrix(self, cameraMatrix, rotationVector, translationVectors):
+        # Convert the roation vector to a 3 x 3 rotation matrix
+        R = cv2.Rodrigues(np.array(rotationVector))[0]
+        # Stack rotationVector and translationVectors so we get a single array
+        stacked = np.hstack((R, np.array(translationVectors)))
+        # Now we can get P by getting the dot product of K and
+        return np.dot(cameraMatrix, stacked)    
+        
+    def __project(self, P, X):
+        """    Project points in X (4*n array) and normalize coordinates. """
+        x = np.dot(P, X)
+        for i in range(3):
+            x[i] /= x[2]    
+        return x
+        
+    def __projection(self, P, objectPoints):
+        ones = np.ones((objectPoints.shape[0],1))
+        t = np.column_stack((objectPoints, ones)).transpose()
+        return self.__project(P, t).transpose()
+		
     def __Augmentation(self):
         """Projects an augmentation object over the chessboard pattern."""
         # Load the camera.
