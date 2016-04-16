@@ -177,7 +177,6 @@ class Assignment2(object):
         m, n, d = texture.shape
         # Define corner points of texture
         imagePoints.append([(0, 0), (float(n), 0), (float(n), float(m)), (0, m)])
-        print imagePoints[0]
         
         # Append the corners of the texture
         
@@ -195,9 +194,14 @@ class Assignment2(object):
         ip1 = np.array([[x, y] for (x, y) in imagePoints[0]])
         ip2 = np.array([[x, y] for (x, y) in imagePoints[1]])
         
+        # package the corners
+        newCorners = []
+        newCorners.append(ip1)
+        newCorners.append(ip2)
+        
         # Calculate homography
         H, mask = cv2.findHomography(ip1, ip2)
-        return H, imagePoints    
+        return H, newCorners    
         
 
     #----------------------------------------------------------------------#
@@ -344,7 +348,7 @@ class Assignment2(object):
         lastCorners = None
         
         # Load videodata.
-        videoname = "Grid05"
+        videoname = "Grid01"
         filename = self.__path + "Videos/" + videoname + ".mp4"
         SIGBTools.VideoCapture(filename, SIGBTools.CAMERA_VIDEOCAPTURE_640X480)
 
@@ -359,6 +363,8 @@ class Assignment2(object):
         # Exercise 2.03 (a)
         # TextureMapGridSequence_Grid0X.wmv image sequence images
         texture_map_images = []
+        
+        counter = 0
 
         # Read each frame from input video.
         while True:
@@ -370,25 +376,30 @@ class Assignment2(object):
 
             # Exercise 2.03 (a)
             # Finds the positions of internal corners of the chessboard.
-            imgCopy = image.copy()  # Use copy of image to find corners so the grid isn't saved to the image
-            corners = SIGBTools.FindCorners(imgCopy)
-            if corners is not None:     
+            corners = SIGBTools.FindCorners(image, isDrawed=False)  # Don't draw the grid in the image
+            if corners is not None:                  
                 H, points = self.__GetHomography(texture, corners, idx)  
-                image = self.__OverlayImage(H, texture, image)
+                image = self.__OverlayImage(H, texture, image, fillBackground=points[1])
                 lastCorners = corners
+                counter = 0
             else:
                 # Apply Unsharp Mask
-                blurred = self.__UnSharpMask(image)
-                corners = SIGBTools.FindCorners(blurred)
+                sharpened = self.__UnSharpMask(image)
+                corners = SIGBTools.FindCorners(sharpened, isDrawed=False)  # Find corners again, don't draw the grid
                 if corners is not None:  # Unsharp mask has helped to find the corners
                     print "Found corners using unsharp filter..."   
-                    H, points = self.__GetHomography(texture, corners, idx)               
-                    image = self.__OverlayImage(H, texture, image)
-                    lastCorners = corners   
+                    H, points = self.__GetHomography(texture, corners, idx)     
+                    image = self.__OverlayImage(H, texture, image, fillBackground=points[1])
+                    lastCorners = corners  
+                    counter = 0
+                elif counter > 3:
+                    lastCorners = None
+                    counter = 0
                 elif lastCorners is not None:  # Unsharp mask not working, so use last record corners
                     print "Could not find corners using unsharp filter..."
                     H, points = self.__GetHomography(texture, lastCorners, idx)
-                    image = self.__OverlayImage(H, texture, image)                    
+                    image = self.__OverlayImage(H, texture, image, fillBackground=points[1])    
+                    counter += 1
             texture_map_images.append(image)
             cv2.imshow("Image", image)
 
@@ -410,9 +421,15 @@ class Assignment2(object):
         cv2.destroyAllWindows()
         SIGBTools.release()
 
-    def __OverlayImage(self, homography, texture, image):
+    def __OverlayImage(self, homography, texture, image, fillBackground=np.asarray([])):
         h, w, d = image.shape
         overlay = cv2.warpPerspective(texture, homography, (w, h))
+        if fillBackground.any():  # Put black background behind overlay to avoid transparency
+            m, n, d = texture.shape
+            # Define corner points of overlay
+            corners = np.asarray([(0, 0), (float(n), 0), (float(n), float(m)), (0, m)])
+            cv2.fillConvexPoly(image, fillBackground.astype(int), 0, 16)   
+        
         #return cv2.addWeighted(image, 1, overlay, 1, 0)   
         return cv2.add(image, overlay)
     
@@ -515,6 +532,7 @@ class Assignment2(object):
 
             # Check the corner of detected object.
             for sqr in squares:
+                cv2.fillConvexPoly(image, sqr.astype(int), 0)
                 H, points = self.__GetHomography(texture, sqr)  
                 image = self.__OverlayImage(H, texture, image)
                 #lastCorners = corners
