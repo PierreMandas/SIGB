@@ -41,6 +41,7 @@ class Assignment2(object):
     #                           Class Attributes                           #
     #----------------------------------------------------------------------#
     __path = "./Assignments/_02/"
+    __switchMethod = False
 
     #----------------------------------------------------------------------#
     #                    Assignment2 Class Constructor                     #
@@ -201,12 +202,22 @@ class Assignment2(object):
         
         # Calculate homography
         H, mask = cv2.findHomography(ip1, ip2)
-        return H, newCorners    
-        
+        return H, newCorners          
 
     #----------------------------------------------------------------------#
     #                        Private Class Methods                         #
     #----------------------------------------------------------------------#
+
+    def __GetCornerPoints(self, grid):
+        idx = [0, 8, 45, 53]        
+        C = [(float(grid[idx[0], 0, 0]), float(grid[idx[0], 0, 1])),
+                (float(grid[idx[1], 0, 0]), float(grid[idx[1], 0, 1])),
+                (float(grid[idx[3], 0, 0]), float(grid[idx[3], 0, 1])),
+                (float(grid[idx[2], 0, 0]), float(grid[idx[2], 0, 1]))]  
+        # Convert to openCV format
+        corners = np.array([[x, y] for (x, y) in C])      
+        return corners
+    
     def __ShowFloorTrackingData(self):
         # Exercise 2.01 (k)
         # Our homography
@@ -412,8 +423,6 @@ class Assignment2(object):
         filename = "TextureMapGridSequence_" + videoname
         self.__Record(filename, texture_map_images)
 
-
-
         # Wait 2 seconds before finishing the method.
         cv2.waitKey(2000)
 
@@ -468,7 +477,6 @@ class Assignment2(object):
         # Save the homography
         np.save(self.__path + "Outputs/homography3.npy", H)       
         
-
         # Read each frame from input video and draw the rectangules on it.
         for i in range(lenght):
             # Read the current image from a video file.
@@ -619,7 +627,41 @@ class Assignment2(object):
         # Load the camera.
         cameraID = 0
         SIGBTools.VideoCapture(cameraID, SIGBTools.CAMERA_VIDEOCAPTURE_640X480_30FPS)
-
+        
+        # 2.07 (b) Read camera parameters
+        P, K, R, t, distCoeffs = SIGBTools.GetCameraParameters()
+        
+        # 2.07 (c) Get full camera matrix of first view
+        firstR = R[0]
+        firstT = t[0]
+        # P is already calculated for us in CaptureManager.__Calibration but we'll use our method and compare
+        P2 = self.__get_P_for_camera_matrix(K, firstR, firstT)
+        # comparing P  and P2 shows an identical result
+        #print P
+        #print P2        
+        ## Results
+        ##[[ -1.04170480e+03   3.30300185e+01   3.27649849e+02   1.36849177e+04]
+         ##[  6.23787442e+00  -1.02621065e+03   3.27881987e+02   1.08709279e+04]
+         ##[ -2.16815316e-02   1.30796493e-01   9.91172129e-01   3.36725398e+01]]
+         
+        ##[[ -1.04170480e+03   3.30300185e+01   3.27649849e+02   1.36849177e+04]
+         ##[  6.23787442e+00  -1.02621065e+03   3.27881987e+02   1.08709279e+04]
+         ##[ -2.16815316e-02   1.30796493e-01   9.91172129e-01   3.36725398e+01]]    
+        #sys.exit(0)
+                
+        # 2.07 (d) 
+        path = "./Framework/VideoCaptureDevices/CalibrationData/"
+        imgPoints = np.load(path + "Camera_0_img_points.npy")        
+        objPoints = np.load(path + "Camera_0_obj_points.npy")
+        
+        #padded = np.pad(cPoints, ((0,0), (0,1)), mode='constant', constant_values=0)
+        # Reshape
+        cPoints = imgPoints[0].reshape((54,1,2))
+        hPoints = objPoints[0].reshape((54,1,3))       
+        # Get outer points
+        homographyPoints = self.__GetCornerPoints(hPoints)
+        calibrationPoints = self.__GetCornerPoints(cPoints)    
+        
         # Read each frame from input camera.
         while True:
             # Read the current image from the camera.
@@ -627,13 +669,26 @@ class Assignment2(object):
 
             # Finds the positions of internal corners of the chessboard.
             corners = SIGBTools.FindCorners(image, False)
+            #corners = np.pad(corners, ((0,0), (0,1)), mode='constant', constant_values=0)
             if corners is not None:
-                pass
+                crnrs = self.__GetCornerPoints(corners)
+                # Draw corners of current corners
+                for p in crnrs:
+                    C = int(p[0]), int(p[1])
+                    cv2.circle(image, C, 2, (0,0,255),2)    
+                if (not self.__switchMethod): 
+                    P2 = SIGBTools.PoseEstimationMethod1(image, corners, homographyPoints, imgPoints[0], P, K)  
+                    print "Doing P2_Method1"
+                else:
+                    print "Doing P2_Method2"
+                    P2 = SIGBTools.PoseEstimationMethod2(corners, objPoints[0], K, distCoeffs)
 
             # Show the final processed image.
             cv2.imshow("Augmentation", image)
             if cv2.waitKey(1) & 0xFF == ord("q"):
                 break
+            if cv2.waitKey(1) & 0xFF == ord("x"):
+                self.__switchMethod = not self.__switchMethod
 
         # Wait 2 seconds before finishing the method.
         cv2.waitKey(2000)
