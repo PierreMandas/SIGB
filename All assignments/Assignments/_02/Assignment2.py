@@ -32,6 +32,7 @@ from pylab import subplot
 from pylab import title
 
 import SIGBTools
+from Framework.VideoCaptureDevices.CaptureManager import CaptureManager
 
 ########################################################################
 class Assignment2(object):
@@ -393,24 +394,24 @@ class Assignment2(object):
                 image = self.__OverlayImage(H, texture, image, fillBackground=points[1])
                 lastCorners = corners
                 counter = 0
-            else:
-                # Apply Unsharp Mask
-                sharpened = self.__UnSharpMask(image)
-                corners = SIGBTools.FindCorners(sharpened, isDrawed=False)  # Find corners again, don't draw the grid
-                if corners is not None:  # Unsharp mask has helped to find the corners
-                    print "Found corners using unsharp filter..."   
-                    H, points = self.__GetHomography(texture, corners, idx)     
-                    image = self.__OverlayImage(H, texture, image, fillBackground=points[1])
-                    lastCorners = corners  
-                    counter = 0
-                elif counter > 3:
-                    lastCorners = None
-                    counter = 0
-                elif lastCorners is not None:  # Unsharp mask not working, so use last record corners
-                    print "Could not find corners using unsharp filter..."
-                    H, points = self.__GetHomography(texture, lastCorners, idx)
-                    image = self.__OverlayImage(H, texture, image, fillBackground=points[1])    
-                    counter += 1
+            #else:
+                ## Apply Unsharp Mask
+                #sharpened = self.__UnSharpMask(image)
+                #corners = SIGBTools.FindCorners(sharpened, isDrawed=False)  # Find corners again, don't draw the grid
+                #if corners is not None:  # Unsharp mask has helped to find the corners
+                    #print "Found corners using unsharp filter..."   
+                    #H, points = self.__GetHomography(texture, corners, idx)     
+                    #image = self.__OverlayImage(H, texture, image, fillBackground=points[1])
+                    #lastCorners = corners  
+                    #counter = 0
+                #elif counter > 3:
+                    #lastCorners = None
+                    #counter = 0
+                #elif lastCorners is not None:  # Unsharp mask not working, so use last record corners
+                    #print "Could not find corners using unsharp filter..."
+                    #H, points = self.__GetHomography(texture, lastCorners, idx)
+                    #image = self.__OverlayImage(H, texture, image, fillBackground=points[1])    
+                    #counter += 1
             texture_map_images.append(image)
             cv2.imshow("Image", image)
 
@@ -521,12 +522,15 @@ class Assignment2(object):
     def __TextureMapObjectSequence(self):
         """Poor implementation of simple TextureMap."""
         # Load videodata.
-        filename = self.__path + "Videos/Scene01.mp4"
+        file = "Scene01"
+        filename = self.__path + "Videos/" + file + ".mp4"
         SIGBTools.VideoCapture(filename, SIGBTools.CAMERA_VIDEOCAPTURE_640X480)
         drawContours = True
 
         # Load texture mapping image.
         texture = cv2.imread(self.__path + "Images/ITULogo.png")
+        
+        texture_map_images = []
 
         # Read each frame from input video.
         while True:
@@ -548,11 +552,16 @@ class Assignment2(object):
             # Draws contours outlines or filled contours.
             if drawContours and len(squares) > 0:
                 cv2.drawContours(image, squares, -1, (0, 255, 0), 3)
+                
+            texture_map_images.append(image)
 
             # Show the final processed image.
             cv2.imshow("Detection", image)
             if cv2.waitKey(1) & 0xFF == ord("q"):
                 break
+            
+        # Make, write and close videowriter for TextureMapGroundFloor.wmv
+        self.__Record("TextureMapObjectSequence_" + file, texture_map_images)        
 
         # Wait 2 seconds before finishing the method.
         cv2.waitKey(2000)
@@ -628,6 +637,9 @@ class Assignment2(object):
         cameraID = 0
         SIGBTools.VideoCapture(cameraID, SIGBTools.CAMERA_VIDEOCAPTURE_640X480_30FPS)
         
+        # Empty image list
+        texture_map_images = []        
+        
         # 2.07 (b) Read camera parameters
         P, K, R, t, distCoeffs = SIGBTools.GetCameraParameters()
         
@@ -635,7 +647,7 @@ class Assignment2(object):
         firstR = R[0]
         firstT = t[0]
         # P is already calculated for us in CaptureManager.__Calibration but we'll use our method and compare
-        P2 = self.__get_P_for_camera_matrix(K, firstR, firstT)
+        P1 = self.__get_P_for_camera_matrix(K, firstR, firstT)
         # comparing P  and P2 shows an identical result
         #print P
         #print P2        
@@ -661,7 +673,6 @@ class Assignment2(object):
         # Get outer points
         homographyPoints = self.__GetCornerPoints(hPoints)
         calibrationPoints = self.__GetCornerPoints(cPoints)    
-        
         # Read each frame from input camera.
         while True:
             # Read the current image from the camera.
@@ -669,26 +680,38 @@ class Assignment2(object):
 
             # Finds the positions of internal corners of the chessboard.
             corners = SIGBTools.FindCorners(image, False)
-            #corners = np.pad(corners, ((0,0), (0,1)), mode='constant', constant_values=0)
+            
+            font = cv2.FONT_HERSHEY_SIMPLEX
             if corners is not None:
-                crnrs = self.__GetCornerPoints(corners)
+                outerCorners = self.__GetCornerPoints(corners)                
                 # Draw corners of current corners
-                for p in crnrs:
-                    C = int(p[0]), int(p[1])
-                    cv2.circle(image, C, 2, (0,0,255),2)    
+                #for p in crnrs:
+                    #C = int(p[0]), int(p[1])
+                    #cv2.circle(image, C, 2, (0,0,255),2)    
+                # Switch between methods by pressing 'x' on the keyboard
                 if (not self.__switchMethod): 
-                    P2 = SIGBTools.PoseEstimationMethod1(image, corners, homographyPoints, imgPoints[0], P, K)  
-                    print "Doing P2_Method1"
-                else:
-                    print "Doing P2_Method2"
+                    P2 = SIGBTools.PoseEstimationMethod1(image, outerCorners, homographyPoints, calibrationPoints, P1, K)                      
+                    cv2.putText(image, 'P2_Method1', (20, 30), font, 1, (255,255,255), 1)
+                else:                    
                     P2 = SIGBTools.PoseEstimationMethod2(corners, objPoints[0], K, distCoeffs)
+                    cv2.putText(image, 'P2_Method2', (20, 30), font, 1, (255,255,255), 1)
+                CaptureManager.Instance.Parameters.P2 = P2
+                    
+                SIGBTools.DrawCoordinateSystem(image)
+                SIGBTools.DrawAugmentedCube(image)
 
             # Show the final processed image.
             cv2.imshow("Augmentation", image)
+            # Add image to the image sequence for recording
+            texture_map_images.append(image)
+            
             if cv2.waitKey(1) & 0xFF == ord("q"):
                 break
             if cv2.waitKey(1) & 0xFF == ord("x"):
                 self.__switchMethod = not self.__switchMethod
+                
+        # Make, write and close videowriter for TextureMapGroundFloor.wmv
+        self.__Record("Augmentation", texture_map_images)        
 
         # Wait 2 seconds before finishing the method.
         cv2.waitKey(2000)
