@@ -59,6 +59,8 @@ class Cube(object):
         """This method uses the homography between two views for finding the extrinsic parameters (R|t) of the camera in the current view."""
         
         H1, mask = cv2.findHomography(corners, calibrationPoints)
+        
+        H1 = np.linalg.inv(H1)
         #H1, mask = cv2.findHomography(homographyPoints, calibrationPoints)
         #H2 = ImageManager.Instance.EstimateHomography(calibrationPoints, corners)
         #H2cs = np.dot(H1, H2)
