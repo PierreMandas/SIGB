@@ -634,6 +634,20 @@ class Assignment1(object):
     
         quiver(newSobelX, newSobelY)
         show()
+        
+    def __showQuiverPlot2(self, I, magnitude, orientation):
+        gray = I.copy()
+
+        # inspired by http://matplotlib.org/1.4.0/examples/pylab_examples/quiver_demo.html
+        res = 3
+        N, M = gray.shape
+        X, Y = np.meshgrid(np.arange(0, M, res), np.arange(0, N, res))
+        U = magnitude * np.cos(orientation)
+        V = magnitude * np.sin(orientation)
+        
+        imshow(gray, cmap=cm.gray)
+        quiver(X, Y, U[::res, ::res], V[::res, ::res])
+        show()        
      
     def __CircleTest(self, grayscale, centerPoints):
         nPts = 20
@@ -719,7 +733,7 @@ class Assignment1(object):
         grayscale = cv2.GaussianBlur(grayscale, (7,7), 20)        
 
         # Get gradient magnitudes and orientations from image
-        gX, gY, magnitude, orientation = self.__getGradientImageInfo(grayscale)         
+        gX, gY, magnitude, orientation = self.__getGradientImageInfo(grayscale)        
 
         # Normal threshold methods for pupil, glints and iris
         pupils = self.__GetPupil(grayscale,  sliderVals["pupilThr"], sliderVals["pupilMinSize"], sliderVals["pupilMaxSize"], sliderVals["pupilMinExtend"], sliderVals["pupilMaxExtend"])
@@ -759,6 +773,7 @@ class Assignment1(object):
         
         # Show quiver plot
         #self.__showQuiverPlot(grayscale)
+        self.__showQuiverPlot2(grayscale, magnitude, orientation)
         
         # Uncomment these lines as your methods start to work to display the result.
         #for pupil in pupils:
