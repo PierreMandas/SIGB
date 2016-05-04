@@ -12,11 +12,10 @@
 #<!-- Information: No additional information                                -->
 #<!-- Date       : 24/02/2016                                               -->
 #<!-- Change     : 24/02/2016 - Creation of this class                      -->
-#<!--            : 29/03/2016 - Add new features for Assignment #02         -->
-#<!-- Review     : 29/03/2016 - Finalized                                   -->
+#<!-- Review     : 26/04/2016 - Finalized                                   -->
 #<!--------------------------------------------------------------------------->
 
-__version__ = "$Revision: 2016032901 $"
+__version__ = "$Revision: 2016042601 $"
 
 ########################################################################
 import math
@@ -161,6 +160,33 @@ def DrawAugmentedCube(image):
     """
     AugmentedManager.Instance.Cube.DrawAugmentedCube(image)
 
+def CalculateFaceCornerNormals(top, right, left, up, down):
+    """
+    CalculateFaceCornerNormals(top, right, left, up, down)
+
+    Return the normal vector of each cube face.
+    Returns: A set of normal vectors.
+    Parameters: A set of cube faces.
+
+    Usage: top, right, left, up, down = SIGBTools.CalculateFaceCornerNormals(top, right, left, up, down)
+    """
+    return AugmentedManager.Instance.Cube.CalculateFaceCornerNormals(top, right, left, up, down)
+
+def GetFaceNormal(face):
+    """
+    GetFaceNormal(face)
+
+    Return the normal vector of one specific cube face.
+    Returns: normal: normal vector.
+             center: center of cube face.
+             angle: angle of the cube face relate to the camera view.
+    Parameters: face: a cube face.
+
+    Usage: normal, center, angle = SIGBTools.GetFaceNormal(face)
+    """
+    return AugmentedManager.Instance.Cube.GetFaceNormal(face)
+
+
 def FindCorners(image, isDrawed=True):
     """
     FindCorners(image, isDrawed=True) -> corners
@@ -173,7 +199,7 @@ def FindCorners(image, isDrawed=True):
     Usage: corners = SIGBTools.FindCorners(image)
            corners = SIGBTools.FindCorners(image, isDrawed=True)
     """
-    return AugmentedManager.Instance.Pattern.FindCorners(image)
+    return AugmentedManager.Instance.Pattern.FindCorners(image, isDrawed)
 
 def PoseEstimationMethod1(image, corners, homographyPoints, calibrationPoints, P, K):
     """
@@ -206,6 +232,23 @@ def PoseEstimationMethod2(corners, patternPoints, K, distCoeffs):
     Usage: P = PoseEstimationMethod2(corners, patternPoints, K, distCoeffs)
     """
     return AugmentedManager.Instance.Cube.PoseEstimationMethod2(corners, patternPoints, K, distCoeffs)
+
+def PoseEstimation(objectPoints, corners, points, K, distCoeffs):
+    """
+    PoseEstimation(objectPoints, corners, points, K, distCoeffs) -> points
+
+    This function uses the chessboard pattern for finding the extrinsic parameters (R|T) of the camera in the current view and estimate the points on the image.
+    Returns: points: the coordinate of points on the image.
+    Parameters: objectPoints: a vector of points from a chessboard pattern.
+                corners: corners from the detected chessboard.
+                points: points to be estimated.
+                patternPoints: points from the detected chessboard.
+                K: a 3x3 floating-point camera matrix.
+                distCoeffs: vector of distortion coefficients of 4, 5, or 8 elements.
+
+    Usage: points = PoseEstimation(objectPoints, corners, points, K, distCoeffs)
+    """
+    return AugmentedManager.Instance.Cube.PoseEstimation(objectPoints, corners, points, K, distCoeffs)
 
 #----------------------------------------------------------------------#
 #                         Geometrical Methods                          #
@@ -376,6 +419,101 @@ def calibrate():
     Usage: SIGBTools.calibrate()
     """
     CalibrationManager.Instance.Calibrate()
+
+def calibrateStereoCameras(leftCorners, rightCorners, objectPoints):
+    """
+    calibrateStereoCameras(leftCorners, rightCorners, objectPoints)
+
+    Method used for calibrating stereo camera.
+    Returns: Rotation and translation matrices.
+    Parameters: leftCorners: chessboard corners detected from the left image.
+                rightCorners: chessboard corners detected from the right image.
+                objectPoints: a vector of points from a chessboard pattern.
+
+    Usage: R, t = SIGBTools.calibrateStereoCameras(leftCorners, rightCorners, objectPoints)
+    """
+    return CalibrationManager.Instance.CalibrateStereoCameras(leftCorners, rightCorners, objectPoints)
+
+def EssentialMatrix(R, t):
+    """
+    EssentialMatrix(R, t)
+
+    Calculate the Essential Matrix.
+    Return: E: essential matrix.
+    Parameters: R: rotation matrix.
+                t: translation matrix.
+
+    Usage: E = SIGBTools.EssentialMatrix(R, t)
+    """
+    return CalibrationManager.Instance.EssentialMatrix(R, t)
+
+def FundamentalMatrix(K1, K2, E):
+    """
+    FundamentalMatrix(K1, K2, E)
+
+    Calculate the Essential Matrix.
+    Return: F: fundamental matrix.
+    Parameters: K1: first camera matrix.
+                K2: second camera matrix.
+                E: Essential matrix.
+
+    Usage: F = SIGBTools.FundamentalMatrix(K1, K2, E)
+    """
+    return CalibrationManager.Instance.FundamentalMatrix(K1, K2, E)
+
+def StereoRectify(R, t):
+    """
+    StereoRectify(R, t)
+
+    Method used to compute rectification transforms for each head of a calibrated stereo camera.
+    Returns: This method does not return anything.
+    Parameters: R: rotation matrix.
+                t: translation matrix.
+
+    Usage: SIGBTools.StereoRectify(R, t)
+    """
+    CalibrationManager.Instance.StereoRectify(R, t)
+
+def UndistortRectifyMap():
+    """
+    UndistortRectifyMap()
+
+    Method used to compute the undistortion and rectification transformation maps.
+    Returns: This method does not return anything.
+    Parameters: This method does not have any parameter.
+
+    Usage: SIGBTools.UndistortRectifyMap()
+    """
+    CalibrationManager.Instance.UndistortRectifyMap()
+
+def UndistortImages(left, right):
+    """
+    UndistortImages(left, right)
+
+    Method used to undistorte the input stereo images.
+    Returns: two undistorted stereo images.
+    Parameters: left: left image provided by a stereo camera.
+                right: right image provided by a stereo camera.
+
+    leftUndistort, rightUndistort = SIGBTools.UndistortImages(left, right)
+    """
+    return CalibrationManager.Instance.UndistortImages(left, right)
+
+def StereoSGBM(left, right, minDisparity=0, blockSize=1):
+    """
+    StereoSGBM(left, right, minDisparity=0, blockSize=1)
+
+    Method used to compute a stereo correspondence using the block matching algorithm.
+    Returns: disparity: depth map image,
+             Q: disparity-to-depth mapping matrix.
+    Parameters: left: left image provided by a stereo camera.
+                right: right image provided by a stereo camera.
+                minDisparity: minimum possible disparity value.
+                blockSize: matched block size.
+
+    disparity, Q  = SIGBTools.StereoSGBM(left, right)
+    """
+    return CalibrationManager.Instance.StereoSGBM(left, right, minDisparity, blockSize)
 
 def GetCameraParameters():
     """

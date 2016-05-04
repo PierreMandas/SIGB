@@ -142,7 +142,7 @@ end_header
         """Define the epipolar geometry between stereo cameras."""
         # Load two video capture devices.
         SIGBTools.VideoCapture(0, SIGBTools.CAMERA_VIDEOCAPTURE_640X480)
-        SIGBTools.VideoCapture(2, SIGBTools.CAMERA_VIDEOCAPTURE_640X480)
+        SIGBTools.VideoCapture(1, SIGBTools.CAMERA_VIDEOCAPTURE_640X480)
 
         # Calibrate each individual camera.
         SIGBTools.calibrate()
@@ -330,8 +330,10 @@ end_header
         R, t = SIGBTools.calibrateStereoCameras(self.__LeftCorners, self.__RightCorners, self.__ObjectPoints)
 
         # <011> Computes rectification transforms for each head of a calibrated stereo camera.
+        cm.Calibration.StereoRectify(R, t)
 
         # <012> Computes the undistortion and rectification transformation maps.
+        cm.Calibration.UndistortRectifyMap()
 
         # End the calibration process.
         self.__isCalibrating = False

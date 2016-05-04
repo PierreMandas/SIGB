@@ -16,10 +16,10 @@
 #<!-- Change     : 03/06/2014 - Creation of these classes                   -->
 #<!--            : 25/06/2014 - Read the image from Read() method           -->
 #<!--            : 04/12/2015 - Camera calibration process                  --
-#<!-- Review     : 04/12/2015 - Finalized                                   -->
+#<!-- Review     : 26/04/2016 - Finalized                                   -->
 #<!--------------------------------------------------------------------------->
 
-__version__ = "$Revision: 2015120401 $"
+__version__ = "$Revision: 2016042601 $"
 
 ########################################################################
 import cv2
@@ -122,9 +122,10 @@ class Devices(object):
     def __init__(self):
         """Devices Class Constructor."""
         # Creates a dictionary for managering multiple cameras.
-        self.__devices     = OrderedDict()
-        self.__framerate   = FrameRate()
+        self.__devices   = OrderedDict()
+        self.__framerate = FrameRate()
         self.__FPS = 0
+        self.__isCalibrated = {}
 
     #----------------------------------------------------------------------#
     #                         Public Class Methods                         #
@@ -153,6 +154,7 @@ class Devices(object):
             self.__devices[key].Size = (640, 480)
             self.__devices[key].FPS  = 30        
 
+        self.__isCalibrated[key] = False
         self.__Calibration(key)
 
         return True
@@ -184,6 +186,13 @@ class Devices(object):
             self.__devices[key].Release()
         self.__devices.clear()
 
+    def IsCalibrated(self):
+        """Check if all cameras are calibrated."""
+        status = True
+        for key in self.__isCalibrated:
+            status = status and self.__isCalibrated[key]
+        return status
+
     #----------------------------------------------------------------------#
     #                         Private Class Methods                        #
     #----------------------------------------------------------------------#
@@ -214,6 +223,7 @@ class Devices(object):
                     self.__devices[key].Parameters.t = t
                     RT = np.hstack((r, t[0]))
                     self.__devices[key].Parameters.P = np.dot(K, RT)
+                    self.__isCalibrated[key] = True
 
         filename = self.__path + "Camera_" + str(key) + "_distCoeffs.npy"
         if os.path.isfile(filename):

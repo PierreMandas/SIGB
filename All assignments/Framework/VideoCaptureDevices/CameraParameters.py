@@ -13,10 +13,10 @@
 #<!-- Date       : 07/04/2015                                               -->
 #<!-- Change     : 07/04/2015 - Creation of these classes                   -->
 #<!--            : 07/12/2015 - Adapter for the new SIGB Framework          -->
-#<!-- Review     : 07/12/2015 - Finalized                                   -->
+#<!-- Review     : 26/04/2016 - Finalized                                   -->
 #<!--------------------------------------------------------------------------->
 
-__version__ = "$Revision: 2015120701 $"
+__version__ = "$Revision: 2016042601 $"
 
 ########################################################################
 import numpy as np
@@ -29,6 +29,11 @@ class CamerasParameters(object):
     #----------------------------------------------------------------------#
     #                           Class Properties                           #
     #----------------------------------------------------------------------#
+    @property
+    def Index(self):
+        """Get the camera index."""
+        return self.__Index
+
     @property
     def P(self):
         """Get the projection matrix."""
@@ -79,11 +84,52 @@ class CamerasParameters(object):
         """Set the camera distortion coefficients."""
         self.__DistCoeffs = value
 
+    @property
+    def E(self):
+        """Get the essential matrix."""
+        return self.__E
+
+    @E.setter
+    def E(self, value):
+        """Set the essential matrix."""
+        self.__E = value
+
+    @property
+    def F(self):
+        """Get the fundamental matrix."""
+        return self.__F
+
+    @F.setter
+    def F(self, value):
+        """Set the fundamental matrix."""
+        self.__F = value
+
+    @property
+    def Q(self):
+        """Get the disparity-to-depth mapping matrix."""
+        return self.__Q
+
+    @Q.setter
+    def Q(self, value):
+        """Set the disparity-to-depth mapping matrix."""
+        self.__Q = value
+
+    @property
+    def Maps(self):
+        """Get the undistortion and rectification transformation map."""
+        return self.__Maps
+
+    @Maps.setter
+    def Maps(self, value):
+        """Set the undistortion and rectification transformation map."""
+        self.__Maps = value
+
     #----------------------------------------------------------------------#
     #                  CamerasParameters Class Constructor                 #
     #----------------------------------------------------------------------#
-    def __init__(self):
+    def __init__(self, index):
         """CamerasParameters Class Constructor."""
+        self.__Index = index
         self.Clear()
 
     #----------------------------------------------------------------------#
@@ -143,6 +189,10 @@ class CamerasParameters(object):
         self.R = np.zeros((3, 3))
         self.t = np.zeros((3, 1))
         self.DistCoeffs = np.zeros((1, 5))
+        self.E = np.zeros((3, 3))
+        self.F = np.zeros((3, 3))
+        self.Q = np.zeros((4, 4))
+        self.Maps = [np.zeros((1, 1, 1)), np.zeros((1, 1, 1))]
 
     #----------------------------------------------------------------------#
     #                            Class Methods                             #

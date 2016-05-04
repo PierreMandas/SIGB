@@ -14,10 +14,10 @@
 #<!-- Date       : 03/06/2014                                               -->
 #<!-- Change     : 03/06/2014 - Creation of this class                      -->
 #<!--            : 05/12/2015 - Camera calibration                          -->
-#<!-- Review     : 05/12/2015 - Finalized                                   -->
+#<!-- Review     : 26/04/2016 - Finalized                                   -->
 #<!--------------------------------------------------------------------------->
 
-__version__ = "$Revision: 2015120501 $"
+__version__ = "$Revision: 2016042601 $"
 
 ########################################################################
 import cv2
@@ -97,7 +97,7 @@ class VideoCapture(AbstractDevice):
         self._index = index
 
         # Create the camera calibration parameters.
-        self.Parameters = CamerasParameters()
+        self.Parameters = CamerasParameters(index)
 
         # Create an instance of a video capture device based on index argument.
         self.__camera = cv2.VideoCapture(index)

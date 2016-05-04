@@ -12,10 +12,10 @@
 #<!-- Information: No additional information                                -->
 #<!-- Date       : 09/04/2015                                               -->
 #<!-- Change     : 09/04/2015 - Creation of these classes                   -->
-#<!-- Review     : 09/04/2015 - Finalized                                   -->
+#<!-- Review     : 26/04/2016 - Finalized                                   -->
 #<!--------------------------------------------------------------------------->
 
-__version__ = '$Revision: 2015040901 $'
+__version__ = '$Revision: 2016042601 $'
 
 ########################################################################
 import cv2
@@ -83,7 +83,8 @@ class Pattern(object):
         gray = image.copy()
 
         # Finds the positions of internal corners of the chessboard.
-        retval, corners = cv2.findChessboardCorners(gray, self.Size)
+        flags = cv2.CALIB_CB_ADAPTIVE_THRESH | cv2.CALIB_CB_NORMALIZE_IMAGE | cv2.CALIB_CB_FAST_CHECK
+        retval, corners = cv2.findChessboardCorners(gray, self.Size, flags=flags)
 
         if retval:
             # Check if the input image is a grayscale image.
