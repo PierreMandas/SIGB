@@ -32,6 +32,8 @@ from pylab import show
 from pylab import subplot
 from pylab import title
 
+from Framework.Calibration import CalibrationManager as cm
+
 import SIGBTools
 
 ########################################################################
@@ -316,8 +318,13 @@ end_header
         objectPoints = SIGBTools.CalculatePattern()
 
         # <006> Insert the pattern detection results in three vectors.
+        self.__LeftCorners.append(leftCorners)
+        self.__RightCorners.append(rightCorners)
+        self.__ObjectPoints.append(objectPoints)
 
         # <007> Finds the camera intrinsic and extrinsic parameters from several views of a calibration pattern.
+        leftCameraMatrix, leftDistCoeffs = cm.Calibration.CalibrateCamera(0, self.__LeftCorners, self.__ObjectPoints, (640,480))
+        rightCameraMatrix, rightDistCoeffs = cm.Calibration.CalibrateCamera(1, self.__RightCorners, self.__ObjectPoints, (640,480))
 
         # Calibrates the stereo camera.
         R, t = SIGBTools.calibrateStereoCameras(self.__LeftCorners, self.__RightCorners, self.__ObjectPoints)
