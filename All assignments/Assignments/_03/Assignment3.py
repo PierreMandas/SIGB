@@ -32,8 +32,6 @@ from pylab import show
 from pylab import subplot
 from pylab import title
 
-from Framework.Calibration.CalibrationManager     import CalibrationManager
-
 import SIGBTools
 
 ########################################################################
@@ -323,8 +321,8 @@ end_header
         self.__ObjectPoints.append(objectPoints)
 
         # <007> Finds the camera intrinsic and extrinsic parameters from several views of a calibration pattern.
-        leftCameraMatrix, leftDistCoeffs = CalibrationManager.Instance.CalibrateCamera(0, self.__LeftCorners, self.__ObjectPoints, (640,480))
-        rightCameraMatrix, rightDistCoeffs = CalibrationManager.Instance.CalibrateCamera(1, self.__RightCorners, self.__ObjectPoints, (640,480))
+        leftCameraMatrix, leftDistCoeffs = SIGBTools.CalibrationManager.Instance.CalibrateCamera(0, self.__LeftCorners, self.__ObjectPoints, (640,480))
+        rightCameraMatrix, rightDistCoeffs = SIGBTools.CalibrationManager.Instance.CalibrateCamera(1, self.__RightCorners, self.__ObjectPoints, (640,480))
         
         # Calibrates the stereo camera.
         R, t = SIGBTools.calibrateStereoCameras(self.__LeftCorners, self.__RightCorners, self.__ObjectPoints)
@@ -380,6 +378,11 @@ end_header
         cube = cube.reshape(8, -1)
 
         # <020> Applies the texture mapping over all cube sides.
+        #self.__ApplyTexture(result, 'Assignments/_03/Images/Top.jpg', topFace)
+        self.__ApplyTexture(result, 'Assignments/_03/Images/Up.jpg', upFace)
+        #self.__ApplyTexture(result, 'Assignments/_03/Images/Down.jpg', downFace)
+        #self.__ApplyTexture(result, 'Assignments/_03/Images/Right.jpg', leftFace)
+        #self.__ApplyTexture(result, 'Assignments/_03/Images/Left.jpg', rightFace)
 
         # Return the result image.
         return result
@@ -390,15 +393,37 @@ end_header
         h, w = image.shape[:2]
 
         # <016> Open the texture mapping image and get its size.
+        texture = cv2.imread(filename)
+        texH, texW = texture.shape[:2]
 
         # Creates a mask with the same size of the input image.
         whiteMask = np.ones(texture.shape, dtype=np.uint8) * 255
 
         # <017> Estimate the homography matrix between the texture mapping and the cube face.
+        srcPoints = np.array([
+                                (0, 0),
+                                (0, texH),
+                                (texW, 0),
+                                (texW, texH)
+                             ])
+        
+        dstPoints = np.array([            
+                                points[0],
+                                points[1],
+                                points[3],
+                                points[2]
+                             ])
+        homography, _ = cv2.findHomography(srcPoints, dstPoints)
 
         # <018> Applies a perspective transformation to the texture mapping image.
+        texture = cv2.warpPerspective(texture, homography, (w, h))
+        whiteMask = cv2.warpPerspective(whiteMask, homography, (w, h))
 
         # <019> Create a mask from the cube face using the texture mapping image.
+        whiteMask = np.array(cv2.bitwise_or(texture, whiteMask), np.uint8)
+        mapping = cv2.bitwise_not(whiteMask, image.copy())
+        mapping = cv2.bitwise_and(mapping, image.copy())
+        cv2.add(texture, mapping, image)
 
     #----------------------------------------------------------------------#
     #             Private Class Methods Used by Assignment #03             #
