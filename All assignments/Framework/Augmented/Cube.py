@@ -92,7 +92,7 @@ class Cube(object):
         retval, rvec, tvec = cv2.solvePnP(objectPoints, corners, cameraMatrix, distCoeffs)
 
         # <014> Save the rotation and translation matrices as private attributes.
-        self.__rotation = rvec
+        self.__rotation = cv2.Rodrigues(rvec)[0]
         self.__translation = tvec
         
         # <015> Project 3D points to image plane.

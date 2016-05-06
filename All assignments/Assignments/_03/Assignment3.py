@@ -367,22 +367,61 @@ end_header
         # Define each correspoding cube face.
         cube = np.float32([[3, 1,  0], [3, 4,  0], [6, 4,  0], [6, 1,  0],
                            [3, 1, -3], [3, 4, -3], [6, 4, -3], [6, 1, -3]])
-        topFace   = cube[4:]
-        upFace    = np.vstack([cube[5], cube[1:3], cube[6]])
-        downFace  = np.vstack([cube[7], cube[3],   cube[0], cube[4]])
-        leftFace  = np.vstack([cube[4], cube[0:2], cube[5]])
-        rightFace = np.vstack([cube[6], cube[2:4], cube[7]])
+        
+        
+        faces = [
+                    np.array([cube[4], cube[5], cube[6], cube[7]]),
+                    np.array([cube[5], cube[2], cube[6], cube[1]]),
+                    np.array([cube[7], cube[3], cube[0], cube[4]]),
+                    np.array([cube[4], cube[0], cube[1], cube[5]]),
+                    np.array([cube[6], cube[2], cube[3], cube[7]])
+                ]         
+        
         
         # Estimates the cube coordinates on the image.
         cube = SIGBTools.PoseEstimation(objectPoints, corners, cube, K, distCoeffs)
         cube = cube.reshape(8, -1)
+        
+        topFace   = cube[4:]
+        upFace    = np.vstack([cube[5], cube[1:3], cube[6]])
+        downFace  = np.vstack([cube[7], cube[3],   cube[0], cube[4]])
+        leftFace  = np.vstack([cube[4], cube[0:2], cube[5]])
+        rightFace = np.vstack([cube[6], cube[2:4], cube[7]])         
 
         # <020> Applies the texture mapping over all cube sides.
-        #self.__ApplyTexture(result, 'Assignments/_03/Images/Top.jpg', topFace)
-        self.__ApplyTexture(result, 'Assignments/_03/Images/Up.jpg', upFace)
-        #self.__ApplyTexture(result, 'Assignments/_03/Images/Down.jpg', downFace)
-        #self.__ApplyTexture(result, 'Assignments/_03/Images/Right.jpg', leftFace)
-        #self.__ApplyTexture(result, 'Assignments/_03/Images/Left.jpg', rightFace)
+        # Method to get the x and y coordinate tuple of a 1x2 array
+        def mkPoint(_2dPointArray):
+            return (int(_2dPointArray[0]), int(_2dPointArray[1]))        
+        
+        # Get all faceNormals. Get the center of each face (startpoint of face normal). Calculate the face normal vector of each face (endpoint of face normal).
+        faceNormals = [SIGBTools.GetFaceNormal(face) for face in faces]
+        faceCenters = np.array([center for _, center, _ in faceNormals])
+        faceNormalvectors = np.array([np.add(center, normal) for normal, center, _ in faceNormals])
+        
+        # Project the face centers and the face normal vectors.
+        faceCentersProjected = SIGBTools.PoseEstimation(objectPoints, corners, faceCenters, K, distCoeffs)
+        faceNormalvectorsProjected = SIGBTools.PoseEstimation(objectPoints, corners, faceNormalvectors, K, distCoeffs)
+        
+        # Apply texture to each face of the cube and draw the normals, if the angle is below the threshold value of 90.
+        if faceNormals[0][2] < threshold:
+            self.__ApplyTexture(result, 'Assignments/_03/Images/Top.jpg', topFace)
+            cv2.line(result, mkPoint(faceCentersProjected[0][0]), mkPoint(faceNormalvectorsProjected[0][0]), (255, 0, 0), thickness=5)
+            
+        if faceNormals[1][2] < threshold:
+            self.__ApplyTexture(result, 'Assignments/_03/Images/Up.jpg', upFace)         
+            cv2.line(result, mkPoint(faceCentersProjected[1][0]), mkPoint(faceNormalvectorsProjected[1][0]), (255, 0, 0), thickness=5)
+        
+        if faceNormals[2][2] < threshold:
+            self.__ApplyTexture(result, 'Assignments/_03/Images/Down.jpg', downFace)
+            cv2.line(result, mkPoint(faceCentersProjected[2][0]), mkPoint(faceNormalvectorsProjected[2][0]), (255, 0, 0), thickness=5)
+        
+        if faceNormals[3][2] < threshold:
+            self.__ApplyTexture(result, 'Assignments/_03/Images/Left.jpg', leftFace)
+            cv2.line(result, mkPoint(faceCentersProjected[3][0]), mkPoint(faceNormalvectorsProjected[3][0]), (255, 0, 0), thickness=5)
+        
+        if faceNormals[4][2] < threshold:
+            self.__ApplyTexture(result, 'Assignments/_03/Images/Right.jpg', rightFace)
+            cv2.line(result, mkPoint(faceCentersProjected[4][0]), mkPoint(faceNormalvectorsProjected[4][0]), (255, 0, 0), thickness=5)
 
         # Return the result image.
         return result
