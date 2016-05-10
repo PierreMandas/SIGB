@@ -18,8 +18,8 @@ class PCA():
     def run(self):
 
         # <002> perform a full pca
-        num_of_components = 0
-        [eigenvalues, eigenvectors, mu] = pca(asRowMatrix(self.__X), self.__y, number_of_components=)
+        num_components = 0
+        [eigenvalues, eigenvectors, mu] = pca(asRowMatrix(self.__X), self.__y, num_components)
 
         # turn the first (at most ) 16 eigenvectors into grayscale
         # images ( note : eigenvectors are stored by column!)
