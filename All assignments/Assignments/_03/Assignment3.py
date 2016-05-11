@@ -115,7 +115,7 @@ end_header
                 # Grab the video frames.
                 leftImage, rightImage = SIGBTools.read()
                 # Combine two stereo images in only one window.
-                self.__Image = self.__CombineImages(leftImage, rightImage, 0.5)
+                self.__Image = self.__CombineImages(leftImage, rightImage, 1)
 
             # Check what the user wants to do.
             inputKey = cv2.waitKey(1)
@@ -237,11 +237,18 @@ end_header
             # Check what the user wants to do.
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
+            
+            # Record video
+            #resultFile = self.__path + "/Videos/TextureMapping02.wmv"
+            #size = image.shape
+            #SIGBTools.RecordingVideos(resultFile, size=(size[1], size[0]))
+            #SIGBTools.write(image)
 
             # Show the final processed image.
             cv2.imshow("Original", image)
 
         # Wait 2 seconds before finishing the method.
+        SIGBTools.close()
         cv2.waitKey(2000)
 
         # Close all allocated resources.
@@ -265,11 +272,10 @@ end_header
 
                 # Get all points selected by the user.
                 points = np.asarray(self.PointsQueue, dtype=np.float32)
-                points = np.array([np.array([x/2, y/2, z]) for x, y, z in [point for point in points]])
                 
                 # <000> Get the selected points from the left and right images.
-                leftPoints = points[::2]
-                rightPoints = np.array([[x+320, y, z] for x, y, z in points[1::2]])
+                leftPoints = points[1::2]
+                rightPoints = points[::2]
                 
                 #print leftPoints
                 #print rightPoints
@@ -286,8 +292,8 @@ end_header
 
                     # <003> Define the initial and final points of the line.
                     a, b, c = rightEpiLine
-                    x0 = 320
-                    x1 = 640
+                    x0 = 640
+                    x1 = 1280
                     y0 = int(-(c+a*x0)/b)
                     y1 = int(-(c+a*x1)/b)
                     
@@ -300,11 +306,11 @@ end_header
                     #pass
                     # <005> Estimate the epipolar line.
                     
-                    leftEpiLine = np.dot(F.transpose(), point)
+                    leftEpiLine = np.dot(point.transpose(), F)
                     
                     a, b, c = leftEpiLine
                     x0 = 0
-                    x1 = 320
+                    x1 = 640
                     y0 = int(-(c+a*x0)/b)
                     y1 = int(-(c+a*x1)/b)
                     
@@ -460,7 +466,13 @@ end_header
 
         # <019> Create a mask from the cube face using the texture mapping image.
         whiteMask = np.array(cv2.bitwise_or(texture, whiteMask), np.uint8)
+        
+        #cv2.imshow("whiteMask", whiteMask)
+        
         mapping = cv2.bitwise_not(whiteMask, image.copy())
+        
+        #cv2.imshow("blackMask", mapping)
+        
         mapping = cv2.bitwise_and(mapping, image.copy())
         cv2.add(texture, mapping, image)
 
@@ -484,11 +496,11 @@ end_header
 
         # Adjust the right click to correct position.
         if size % 2 != 0:
-            point = (point[0] - 320, point[1])
+            point = (point[0], point[1])
 
         # It is necessary to update the selected point, because the systems shows a resized input image.
         # SIBG: You can use the original size, if you call __CombineImages() method with scale factor value 1.0.
-        point = (point[0] * 2, point[1] * 2, 1)
+        point = (point[0], point[1], 1)
 
         # Insert the new point in the queue.
         self.PointsQueue.append(point)
