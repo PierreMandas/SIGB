@@ -18,7 +18,7 @@ class PCA():
     def run(self):
 
         # <002> perform a full pca
-        num_components = 0
+        num_components = 100
         [eigenvalues, eigenvectors, mu] = pca(asRowMatrix(self.__X), self.__y, num_components)
 
         # turn the first (at most ) 16 eigenvectors into grayscale
@@ -37,18 +37,27 @@ class PCA():
         # (select a face in the data set)
         
         E = []
-        steps = [20]
-        for i in range(16):
-            last = steps[-1]
-            P = project(eigenvectors[:, 0:last], self.__X[0].reshape(1,-1), mu)
-            R = reconstruct(eigenvectors[:, 0:last], P, mu)
+        # FOR PRINTING IMAGES IN STEPS
+        #steps = [20]
+        #for i in range(16):
+            #last = steps[-1]
+            #proj = project(eigenvectors[:, 0:last], self.__X[0].reshape(1,-1), mu)
+            #recon = reconstruct(eigenvectors[:, 0:last], proj, mu)
             
-            R = R.reshape(self.__X[0].shape)
-            E.append(normalize(R, 0, 255))     
-            steps.append(last + 20)  # Add a new step
+            #recon = recon.reshape(self.__X[0].shape)
+            #E.append(normalize(recon, 0, 255))     
+            #steps.append(last + 20)  # Add a new step
             
         #print steps
         
+        # FOR PRINTING SINGLE IMAGE - change rows, cols from 4 to 1!!!
+        steps = [num_components]
+        proj = project(eigenvectors[:, 0:num_components], self.__X[0].reshape(1,-1), mu)
+        recon = reconstruct(eigenvectors[:, 0:num_components], proj, mu)
+                    
+        recon = recon.reshape(self.__X[0].shape)
+        E.append(normalize(recon, 0, 255))          
+        
         # plot reconstructed face
-        subplot(title = "Reconstruction", images = E, rows = 4, cols = 4, sptitle = "Eigenvectors", 
+        subplot(title = "Reconstruction", images = E, rows = 1, cols = 1, sptitle = "Eigenvectors", 
                 sptitles = steps , colormap =cm.gray , filename = None)    
