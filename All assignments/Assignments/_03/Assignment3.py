@@ -33,6 +33,9 @@ from pylab import subplot
 from pylab import title
 
 import SIGBTools
+from Framework.VideoCaptureDevices.CaptureManager import CaptureManager
+
+from pca.eigen_faces_pca import PCA
 
 ########################################################################
 class Assignment3(object):
@@ -141,7 +144,7 @@ end_header
         # Load two video capture devices.
         SIGBTools.VideoCapture(0, SIGBTools.CAMERA_VIDEOCAPTURE_640X480)
         SIGBTools.VideoCapture(1, SIGBTools.CAMERA_VIDEOCAPTURE_640X480)
-
+        
         # Calibrate each individual camera.
         SIGBTools.calibrate()
 
@@ -188,9 +191,11 @@ end_header
                 self.__isCalibrating = True
             # Letter "s" key.
             elif inputKey == ord("s") and self.__isDepth:
+                print "s pressed"
                 self.__isSaving = True
             elif inputKey == ord("d"):
                 if not self.__isDepth:
+                    print "opening depth"
                     # Creates a window to show the depth map.
                     cv2.namedWindow("DepthMap", cv2.WINDOW_AUTOSIZE)
                     cv2.createTrackbar("minDisparity", "DepthMap", 1, 32, self.__SetMinDisparity)
@@ -257,7 +262,7 @@ end_header
 
     def __PCA(self):
         """Principal Component Analysis."""
-        pass
+        PCA().run()
 
     #----------------------------------------------------------------------#
     #           Private Class Methods Developed by the Students            #
@@ -327,8 +332,11 @@ end_header
         self.__ObjectPoints.append(objectPoints)
 
         # <007> Finds the camera intrinsic and extrinsic parameters from several views of a calibration pattern.
-        leftCameraMatrix, leftDistCoeffs = SIGBTools.CalibrationManager.Instance.CalibrateCamera(0, self.__LeftCorners, self.__ObjectPoints, (640,480))
-        rightCameraMatrix, rightDistCoeffs = SIGBTools.CalibrationManager.Instance.CalibrateCamera(1, self.__RightCorners, self.__ObjectPoints, (640,480))
+        path = "./Framework/VideoCaptureDevices/CalibrationData/"
+        
+        for index, parameter in zip(range(2), CaptureManager.Instance.Parameters):
+            parameter.K = np.load(path + "Camera_" + str(index) + "_cameraMatrix.npy")
+            parameter.DistCoeffs = np.load(path + "Camera_" + str(index) + "_distCoeffs.npy")
         
         # Calibrates the stereo camera.
         R, t = SIGBTools.calibrateStereoCameras(self.__LeftCorners, self.__RightCorners, self.__ObjectPoints)
