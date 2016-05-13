@@ -10,16 +10,12 @@ def pca (X, y, number_of_components = 0):
     #S = np.cov(X, mu)
     # center data
     mu = X.mean(axis=0)
-    X = X - mu    
-    if n>d:
-        covariance = np.dot(X.T, X) # Covariance Matrix
-        eigenvalues, eigenvectors = np.linalg.eigh(covariance) # Eigenvalues and Eigenvectors
-    else:
-        covariance = np.dot(X,X.T)
-        eigenvalues, eigenvectors = np.linalg.eigh(covariance)
-        eigenvectors = np.dot(X.T, eigenvectors)
-        for i in xrange(n):
-            eigenvectors[:, i] = eigenvectors[:, i]/np.linalg.norm(eigenvectors[:, i])
+    #X = X - mu    
+    covariance = np.dot((X - mu), (X - mu).T)
+    eigenvalues, eigenvectors = np.linalg.eigh(covariance)
+    eigenvectors = np.dot((X - mu).T, eigenvectors)
+    for i in xrange(n):
+        eigenvectors[:, i] = eigenvectors[:, i]/np.linalg.norm(eigenvectors[:, i])
     
     # <004> sort eigenvectors descending by their eigenvalue
     
@@ -36,8 +32,8 @@ def pca (X, y, number_of_components = 0):
     eigenvectors = eigenvectors[:, indexes]
 
     # <005> select only number_of_components
-    eigenvalues = eigenvalues[0:number_of_components].copy()
-    eigenvectors = eigenvectors[:, 0:number_of_components].copy()
+    eigenvalues = eigenvalues[0:number_of_components]
+    eigenvectors = eigenvectors[:, 0:number_of_components]
 
     return [eigenvalues, eigenvectors, mu]
 
