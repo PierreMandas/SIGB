@@ -110,7 +110,7 @@ class Calibration(object):
         patternPoints = self.__Pattern.CalculatePattern()
 
         # Define the number of chessboard that you want to use during the calibration process.
-        N = 5
+        N = 9
 
         # Number of detected chessboard.
         j = 0
@@ -229,6 +229,8 @@ class Calibration(object):
             cameraMatrix[index] = parameter.K
             distCoeffs[index]   = parameter.DistCoeffs
         imageSize = CaptureManager.Instance.Size
+        
+        print cameraMatrix[0]
 
         # Defines the criterias used by stereoCalibrate() function.
         criteria = (cv2.TERM_CRITERIA_MAX_ITER + cv2.TERM_CRITERIA_EPS, 100, 1e-5)

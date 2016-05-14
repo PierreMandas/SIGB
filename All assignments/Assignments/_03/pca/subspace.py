@@ -10,7 +10,7 @@ def pca (X, y, number_of_components = 0):
     #S = np.cov(X, mu)
     # center data
     mu = X.mean(axis=0)
-    #X = X - mu    
+    
     covariance = np.dot((X - mu), (X - mu).T)
     eigenvalues, eigenvectors = np.linalg.eigh(covariance)
     eigenvectors = np.dot((X - mu).T, eigenvectors)
@@ -36,8 +36,6 @@ def pca (X, y, number_of_components = 0):
     eigenvectors = eigenvectors[:, 0:number_of_components]
 
     return [eigenvalues, eigenvectors, mu]
-
-
 
 def project(W, X, mu=None):
     if mu is None :

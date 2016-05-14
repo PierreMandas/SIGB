@@ -78,6 +78,7 @@ class Recording(object):
     #----------------------------------------------------------------------#
     def AddVideo(self, index, fps=30.0, size=(640, 480)):
         """Add a new video in the Python dictionary."""
+        print index
         key = str(index)
         if self.__videos.has_key(key):
             return False

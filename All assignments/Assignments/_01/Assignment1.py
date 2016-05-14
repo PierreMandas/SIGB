@@ -380,19 +380,50 @@ class Assignment1(object):
         
         return threshold
     
+    def __DetectIrisHough(self, grayscale):
+        blur = cv2.GaussianBlur(grayscale, (9, 9), 2)
+        
+        dp = 6 # Inverse ratio of the accumulator resolution to the image resolution.
+        minDist = 30 # Minimum distance between the centers of the detected circles.
+        highThr = 20 # High threshold for canny.
+        accThr = 250 # Accumulator threshold for the circle centers at the detection stage. The smaller it is, the more false circles may be detected.
+        minRadius = 135 # Minimum circle radius.
+        maxRadius = 145 # Maximum circle radius.
+        
+        # Apply the hough transform.
+        circles = cv2.HoughCircles(blur, cv2.HOUGH_GRADIENT, dp, minDist, None, highThr, accThr, minRadius, maxRadius)
+        
+        # Make a color image from grayscale for display purposes.
+        results = cv2.cvtColor(grayscale, cv2.COLOR_GRAY2BGR)
+        
+        # Print all detected circles
+        if circles is not None:
+            # Print all circles.
+            all_circles = circles[0]
+            M, N = all_circles.shape
+            k = 1
+            for circle in all_circles:
+                cv2.circle(results, tuple(circle[0:2]), circle[2], (int(k * 255 / M), k * 128, 0))
+                circle = all_circles[0,:]
+                cv2.circle(results, tuple(circle[0:2]), circle[2], (0, 0, 255), 5)
+                k = k + 1
+        
+        # Return the result image.
+        return results        
 
     def __DetectPupilHough(self, grayscale):
         """Performs a circular hough transform in the grayscale image and shows the detected circles.
            The circle with most votes is shown in red and the rest in green colors."""
         # See help for http://docs.opencv.org/3.0-beta/modules/imgproc/doc/feature_detection.html?highlight=hough#cv2.HoughCircles
         blur = cv2.GaussianBlur(grayscale, (31, 31), 11)
+        #blur = cv2.medianBlur(grayscale, 45)
 
         dp = 6 # Inverse ratio of the accumulator resolution to the image resolution.
         minDist = 30 # Minimum distance between the centers of the detected circles.
         highThr = 20 # High threshold for canny.
-        accThr = 850 # Accumulator threshold for the circle centers at the detection stage. The smaller it is, the more false circles may be detected.
-        minRadius = 50 # Minimum circle radius.
-        maxRadius = 155 # Maximum circle radius.
+        accThr = 150 # Accumulator threshold for the circle centers at the detection stage. The smaller it is, the more false circles may be detected.
+        minRadius = 35 # Minimum circle radius.
+        maxRadius = 45 # Maximum circle radius.
 
         # Apply the hough transform.
         circles = cv2.HoughCircles(blur, cv2.HOUGH_GRADIENT, dp, minDist, None, highThr, accThr, minRadius, maxRadius)
@@ -618,24 +649,24 @@ class Assignment1(object):
         
         return sobelX, sobelY, magnitude, orientation
 
-    def __showQuiverPlot(self, I):
-        # Use sobel to get gradients
-        sobelX = cv2.Sobel(I, cv2.CV_64F, 1, 0)
-        sobelY = cv2.Sobel(I, cv2.CV_64F, 0, 1)
+    #def __showQuiverPlot(self, I):
+        ## Use sobel to get gradients
+        #sobelX = cv2.Sobel(I, cv2.CV_64F, 1, 0)
+        #sobelY = cv2.Sobel(I, cv2.CV_64F, 0, 1)
     
-        # width and height of image. Use steps to quiver plot every third gradient
-        w, h = I.shape
-        wStep = 3 
-        hStep = 3
+        ## width and height of image. Use steps to quiver plot every third gradient
+        #w, h = I.shape
+        #wStep = 3 
+        #hStep = 3
     
-        # use array slicing to get only every third gradient, else the computation amount is too high
-        newSobelX = sobelX[0:w:wStep, 0:h:hStep]
-        newSobelY = sobelY[0:w:wStep, 0:h:hStep]
+        ## use array slicing to get only every third gradient, else the computation amount is too high
+        #newSobelX = sobelX[0:w:wStep, 0:h:hStep]
+        #newSobelY = sobelY[0:w:wStep, 0:h:hStep]
     
-        quiver(newSobelX, newSobelY)
-        show()
+        #quiver(newSobelX, newSobelY)
+        #show()
         
-    def __showQuiverPlot2(self, I, magnitude, orientation):
+    def __showQuiverPlot(self, I, magnitude, orientation):
         gray = I.copy()
 
         # inspired by http://matplotlib.org/1.4.0/examples/pylab_examples/quiver_demo.html
@@ -733,13 +764,13 @@ class Assignment1(object):
         grayscale = cv2.GaussianBlur(grayscale, (7,7), 20)        
 
         # Get gradient magnitudes and orientations from image
-        gX, gY, magnitude, orientation = self.__getGradientImageInfo(grayscale)        
+        #gX, gY, magnitude, orientation = self.__getGradientImageInfo(grayscale)        
 
         # Normal threshold methods for pupil, glints and iris
-        pupils = self.__GetPupil(grayscale,  sliderVals["pupilThr"], sliderVals["pupilMinSize"], sliderVals["pupilMaxSize"], sliderVals["pupilMinExtend"], sliderVals["pupilMaxExtend"])
+        #pupils = self.__GetPupil(grayscale,  sliderVals["pupilThr"], sliderVals["pupilMinSize"], sliderVals["pupilMaxSize"], sliderVals["pupilMinExtend"], sliderVals["pupilMaxExtend"])
         #glints = self.__GetGlints(grayscale, sliderVals["glintThr"], sliderVals["glintMinSize"], sliderVals["glintMaxSize"])
         #pupils, glints = self.__FilterPupilGlint(pupils, glints)
-        irises = self.__GetIrisUsingNormals(image, magnitude, orientation, pupils, 130, 50, 30)
+        #irises = self.__GetIrisUsingNormals(image, magnitude, orientation, pupils, 130, 50, 30)
         
         # Kmeans methods for finding threshold and pupils by kmeans.
         #labelIm, centroids = self.__DetectPupilKMeans(grayscale, K=4, distanceWeight=40, reSize=(70,70))
@@ -757,11 +788,11 @@ class Assignment1(object):
         #iris = self.__CircularHough(grayscale)
 
         # Display results.
-        x, y = 10, 20
+        #x, y = 10, 20
         #self.__SetText(image, (x, y), "Frame: %d" % self.FrameNumber)
 
         # Print the values of the threshold.
-        step = 28
+        #step = 28
         #self.__SetText(image, (x, y + step),     "pupilThr :" + str(sliderVals["pupilThr"]))
         #self.__SetText(image, (x, y + 2 * step), "pupilMinSize :" + str(sliderVals["pupilMinSize"]))
         #self.__SetText(image, (x, y + 3 * step), "pupilMaxSize :" + str(sliderVals["pupilMaxSize"]))
@@ -772,8 +803,7 @@ class Assignment1(object):
         #self.__SetText(image, (x, y + 8 * step), "glintMaxSize :" + str(sliderVals["glintMaxSize"])) 
         
         # Show quiver plot
-        #self.__showQuiverPlot(grayscale)
-        self.__showQuiverPlot2(grayscale, magnitude, orientation)
+        #self.__showQuiverPlot(grayscale, magnitude, orientation)
         
         # Uncomment these lines as your methods start to work to display the result.
         #for pupil in pupils:
@@ -793,7 +823,7 @@ class Assignment1(object):
         
         
         # For iris using normals
-        cv2.ellipse(image, irises, (0, 255, 0), 1)
+        #cv2.ellipse(image, irises, (0, 255, 0), 1)
         
         # For iris using thresholding
         #for iris in irises:
@@ -803,6 +833,10 @@ class Assignment1(object):
             #left_from, left_to, right_from, right_to = corners
             #cv2.rectangle(image, left_from , left_to, (0,255,0))
             #cv2.rectangle(image, right_from , right_to, (0,255,0))
+            
+        # hough transform - 1.08
+        #image = self.__DetectPupilHough(grayscale)
+        image = self.__DetectIrisHough(grayscale)
 
         # Show the final processed image.
         cv2.imshow("Results", image)

@@ -100,7 +100,11 @@ class VideoCapture(AbstractDevice):
         self.Parameters = CamerasParameters(index)
 
         # Create an instance of a video capture device based on index argument.
-        self.__camera = cv2.VideoCapture(index)
+        
+        idx = index
+        if index == 1:
+            idx == 0
+        self.__camera = cv2.VideoCapture(idx)
         self.__camera.set(cv2.CAP_PROP_CONVERT_RGB, True)
 
         # Check if the video capture device has been initialized already using "isOpened()" function.

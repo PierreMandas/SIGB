@@ -50,7 +50,9 @@ class PCA():
     def __reconstruct(self, eigenvectors, mu, numrows=4, numcols=4, numsteps=20):
         '''
         Reconstruct the faces from eigenvectors. 
-        Change numrows, numcols to 1 and numsteps to None to show single image
+        Defaults to showing 16 images in steps of 20
+        Change numrows, numcols to 1 and numsteps to None to show single image 
+        at the current value of the self.__num_components
         '''
         E = []
         if numsteps is not None:
