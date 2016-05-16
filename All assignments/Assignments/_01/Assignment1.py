@@ -198,7 +198,7 @@ class Assignment1(object):
                         continue
                     self.__Menu()
                     size = self.OriginalImage.shape
-                    SIGBTools.RecordingVideos(resultFile, (size[1], size[0]))
+                    SIGBTools.RecordingVideos(resultFile, fps=30.0, size=(size[1], size[0]))
                     saveFrames = True
 
             # Spacebar to stop or start the video.
@@ -761,7 +761,7 @@ class Assignment1(object):
         #cv2.imshow("Histogram Equalization", grayscale)
         
         # Gaussian blur the image. Used for pupil detection with normals, to get better results.
-        grayscale = cv2.GaussianBlur(grayscale, (7,7), 20)        
+        #grayscale = cv2.GaussianBlur(grayscale, (7,7), 20)        
 
         # Get gradient magnitudes and orientations from image
         #gX, gY, magnitude, orientation = self.__getGradientImageInfo(grayscale)        
