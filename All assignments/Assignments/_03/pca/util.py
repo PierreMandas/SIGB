@@ -1,6 +1,6 @@
 import os
 import sys
-from PIL import Image
+#from PIL import Image
 import numpy as np
 
 def read_images (path , sz = None):
